@@ -1,0 +1,10 @@
+{
+  "appTitle": "Anter",
+  "sessionListTitle": "세션",
+  "settingsTitle": "설정",
+  "connect": "연결",
+  "host": "호스트",
+  "port": "포트",
+  "username": "사용자명",
+  "password": "비밀번호"
+}

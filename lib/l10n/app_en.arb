@@ -1,0 +1,10 @@
+{
+  "appTitle": "Anter",
+  "sessionListTitle": "Sessions",
+  "settingsTitle": "Settings",
+  "connect": "Connect",
+  "host": "Host",
+  "port": "Port",
+  "username": "Username",
+  "password": "Password"
+}
