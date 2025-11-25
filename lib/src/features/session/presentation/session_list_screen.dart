@@ -13,6 +13,7 @@ import '../../terminal/presentation/widgets/resizable_split_view.dart';
 import '../../terminal/presentation/widgets/debounced_layout_builder.dart';
 import '../../settings/domain/settings_state.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../settings/domain/shortcut_intents.dart';
 
 class SessionListScreen extends ConsumerStatefulWidget {
   const SessionListScreen({super.key});
@@ -115,313 +116,257 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
     return FocusScope(
       child: Focus(
         autofocus: true,
-        child: Shortcuts(
-          shortcuts: {
-            // Tab navigation - always use Ctrl+Tab (even on macOS)
-            const SingleActivator(LogicalKeyboardKey.tab, control: true):
-                const NextTabIntent(),
-            const SingleActivator(
-              LogicalKeyboardKey.tab,
-              control: true,
-              shift: true,
-            ): const PreviousTabIntent(),
-            // New tab / Go to sessions
-            SingleActivator(
-              LogicalKeyboardKey.keyT,
-              control: !isMacOS,
-              meta: isMacOS,
-            ): const GoToSessionsIntent(),
-            // Close tab
-            SingleActivator(
-              LogicalKeyboardKey.keyW,
-              control: !isMacOS,
-              meta: isMacOS,
-            ): const CloseTabIntent(),
-            // Settings
-            SingleActivator(
-              LogicalKeyboardKey.comma,
-              control: !isMacOS,
-              meta: isMacOS,
-            ): const OpenSettingsIntent(),
+        child: Actions(
+          actions: {
+            NextTabIntent: CallbackAction<NextTabIntent>(
+              onInvoke: (_) {
+                final currentIndex = _tabController.index;
+                final nextIndex = (currentIndex + 1) % totalTabs;
+                _tabController.animateTo(nextIndex);
+                return null;
+              },
+            ),
+            PreviousTabIntent: CallbackAction<PreviousTabIntent>(
+              onInvoke: (_) {
+                final currentIndex = _tabController.index;
+                final prevIndex = (currentIndex - 1 + totalTabs) % totalTabs;
+                _tabController.animateTo(prevIndex);
+                return null;
+              },
+            ),
+            NewTabIntent: CallbackAction<NewTabIntent>(
+              onInvoke: (_) {
+                _tabController.animateTo(0);
+                return null;
+              },
+            ),
+            CloseTabIntent: CallbackAction<CloseTabIntent>(
+              onInvoke: (_) {
+                // Only close if we're on a terminal tab (not session list)
+                if (_tabController.index > 0) {
+                  final tabIndex = _tabController.index - 1;
+                  ref.read(tabManagerProvider.notifier).closeTab(tabIndex);
+                }
+                return null;
+              },
+            ),
+            OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+              onInvoke: (_) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+                return null;
+              },
+            ),
           },
-          child: Actions(
-            actions: {
-              NextTabIntent: CallbackAction<NextTabIntent>(
-                onInvoke: (_) {
-                  final currentIndex = _tabController.index;
-                  final nextIndex = (currentIndex + 1) % totalTabs;
-                  _tabController.animateTo(nextIndex);
-                  return null;
-                },
-              ),
-              PreviousTabIntent: CallbackAction<PreviousTabIntent>(
-                onInvoke: (_) {
-                  final currentIndex = _tabController.index;
-                  final prevIndex = (currentIndex - 1 + totalTabs) % totalTabs;
-                  _tabController.animateTo(prevIndex);
-                  return null;
-                },
-              ),
-              GoToSessionsIntent: CallbackAction<GoToSessionsIntent>(
-                onInvoke: (_) {
-                  _tabController.animateTo(0);
-                  return null;
-                },
-              ),
-              CloseTabIntent: CallbackAction<CloseTabIntent>(
-                onInvoke: (_) {
-                  // Only close if we're on a terminal tab (not session list)
-                  if (_tabController.index > 0) {
-                    final tabIndex = _tabController.index - 1;
-                    ref.read(tabManagerProvider.notifier).closeTab(tabIndex);
-                  }
-                  return null;
-                },
-              ),
-              OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
-                onInvoke: (_) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                  return null;
-                },
-              ),
-            },
-            child: Scaffold(
-              body: Column(
-                children: [
-                  if (isMacOS) const SizedBox(height: 28),
-                  // Custom Top Bar
-                  SafeArea(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isNarrow = constraints.maxWidth < 600;
-                        return GestureDetector(
-                          onTap: () {
-                            // Unfocus any focused terminal to allow global shortcuts to work
-                            FocusScope.of(context).requestFocus(FocusNode());
-                          },
-                          child: Container(
-                            height: 40,
-                            color: Theme.of(context).colorScheme.surface,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TabBar(
-                                    controller: _tabController,
-                                    isScrollable: true,
-                                    tabAlignment: TabAlignment.start,
-                                    dividerColor: Colors.transparent,
-                                    labelPadding: EdgeInsets.symmetric(
-                                      horizontal: isNarrow ? 8 : 16,
+          child: Scaffold(
+            body: Column(
+              children: [
+                if (isMacOS) const SizedBox(height: 28),
+                // Custom Top Bar
+                SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 600;
+                      return GestureDetector(
+                        onTap: () {
+                          // Unfocus any focused terminal to allow global shortcuts to work
+                          FocusScope.of(context).requestFocus(FocusNode());
+                        },
+                        child: Container(
+                          height: 40,
+                          color: Theme.of(context).colorScheme.surface,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TabBar(
+                                  controller: _tabController,
+                                  isScrollable: true,
+                                  tabAlignment: TabAlignment.start,
+                                  dividerColor: Colors.transparent,
+                                  labelPadding: EdgeInsets.symmetric(
+                                    horizontal: isNarrow ? 8 : 16,
+                                  ),
+                                  tabs: [
+                                    Tab(
+                                      height: 40,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.list,
+                                            size: isNarrow ? 14 : 16,
+                                          ),
+                                          SizedBox(width: isNarrow ? 4 : 8),
+                                          Text(
+                                            'Sessions',
+                                            style: TextStyle(
+                                              fontSize: isNarrow ? 12 : 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    tabs: [
-                                      Tab(
-                                        height: 40,
+                                    ...tabManager.tabs.asMap().entries.map((
+                                      entry,
+                                    ) {
+                                      final index = entry.key;
+                                      final tab = entry.value;
+                                      final tabContent = SizedBox(
+                                        width: isNarrow ? 100 : 120,
                                         child: Row(
                                           children: [
-                                            Icon(
-                                              Icons.list,
-                                              size: isNarrow ? 14 : 16,
+                                            Expanded(
+                                              child: Text(
+                                                tab.title,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: isNarrow ? 11 : 12,
+                                                ),
+                                              ),
                                             ),
-                                            SizedBox(width: isNarrow ? 4 : 8),
-                                            Text(
-                                              'Sessions',
-                                              style: TextStyle(
-                                                fontSize: isNarrow ? 12 : 14,
+                                            SizedBox(width: isNarrow ? 2 : 4),
+                                            InkWell(
+                                              onTap: () {
+                                                ref
+                                                    .read(
+                                                      tabManagerProvider
+                                                          .notifier,
+                                                    )
+                                                    .closeTab(index);
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: Padding(
+                                                padding: EdgeInsets.all(
+                                                  isNarrow ? 1.0 : 2.0,
+                                                ),
+                                                child: Icon(
+                                                  Icons.close,
+                                                  size: isNarrow ? 12 : 14,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      ...tabManager.tabs.asMap().entries.map((
-                                        entry,
-                                      ) {
-                                        final index = entry.key;
-                                        final tab = entry.value;
-                                        final tabContent = SizedBox(
-                                          width: isNarrow ? 100 : 120,
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  tab.title,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: isNarrow
-                                                        ? 11
-                                                        : 12,
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: isNarrow ? 2 : 4),
-                                              InkWell(
-                                                onTap: () {
-                                                  ref
-                                                      .read(
-                                                        tabManagerProvider
-                                                            .notifier,
-                                                      )
-                                                      .closeTab(index);
-                                                },
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                child: Padding(
-                                                  padding: EdgeInsets.all(
-                                                    isNarrow ? 1.0 : 2.0,
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.close,
-                                                    size: isNarrow ? 12 : 14,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
+                                      );
 
-                                        return Draggable<int>(
-                                          data: index,
-                                          feedback: Material(
-                                            child: ConstrainedBox(
-                                              constraints: BoxConstraints(
-                                                maxWidth: isNarrow ? 120 : 150,
-                                                maxHeight: 40,
-                                              ),
-                                              child: Tab(
-                                                height: 40,
-                                                child: tabContent,
-                                              ),
+                                      return Draggable<int>(
+                                        data: index,
+                                        feedback: Material(
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxWidth: isNarrow ? 120 : 150,
+                                              maxHeight: 40,
+                                            ),
+                                            child: Tab(
+                                              height: 40,
+                                              child: tabContent,
                                             ),
                                           ),
-                                          child: Tab(
-                                            height: 40,
-                                            child: tabContent,
-                                          ),
-                                        );
-                                      }),
-                                    ],
-                                  ),
+                                        ),
+                                        child: Tab(
+                                          height: 40,
+                                          child: tabContent,
+                                        ),
+                                      );
+                                    }),
+                                  ],
                                 ),
-                                // Local Terminal Button (desktop only)
-                                if (_tabController.index == 0)
-                                  Builder(
-                                    builder: (context) {
-                                      final platform = Theme.of(
-                                        context,
-                                      ).platform;
-                                      final isMobile =
-                                          platform == TargetPlatform.android ||
-                                          platform == TargetPlatform.iOS;
+                              ),
+                              // Local Terminal Button (desktop only)
+                              if (_tabController.index == 0)
+                                Builder(
+                                  builder: (context) {
+                                    final platform = Theme.of(context).platform;
+                                    final isMobile =
+                                        platform == TargetPlatform.android ||
+                                        platform == TargetPlatform.iOS;
 
-                                      // Hide local terminal button on mobile
-                                      if (isMobile) {
-                                        return const SizedBox.shrink();
-                                      }
+                                    // Hide local terminal button on mobile
+                                    if (isMobile) {
+                                      return const SizedBox.shrink();
+                                    }
 
-                                      return IconButton(
-                                        icon: Icon(
-                                          Icons.terminal,
-                                          size: isNarrow ? 18 : 20,
-                                        ),
-                                        tooltip: 'Open Local Terminal',
-                                        onPressed: _openLocalTerminal,
-                                        padding: EdgeInsets.all(
-                                          isNarrow ? 8 : 12,
-                                        ),
-                                        constraints: const BoxConstraints(),
-                                      );
-                                    },
-                                  ),
-                                // + Button (only show on Sessions tab)
-                                if (_tabController.index == 0)
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.add,
-                                      size: isNarrow ? 18 : 20,
-                                    ),
-                                    tooltip: 'New Session',
-                                    onPressed: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const SessionEditorScreen(),
-                                        ),
-                                      );
-                                    },
-                                    padding: EdgeInsets.all(isNarrow ? 8 : 12),
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                // Settings Button
+                                    return IconButton(
+                                      icon: Icon(
+                                        Icons.terminal,
+                                        size: isNarrow ? 18 : 20,
+                                      ),
+                                      tooltip: 'Open Local Terminal',
+                                      onPressed: _openLocalTerminal,
+                                      padding: EdgeInsets.all(
+                                        isNarrow ? 8 : 12,
+                                      ),
+                                      constraints: const BoxConstraints(),
+                                    );
+                                  },
+                                ),
+                              // + Button (only show on Sessions tab)
+                              if (_tabController.index == 0)
                                 IconButton(
                                   icon: Icon(
-                                    Icons.settings,
+                                    Icons.add,
                                     size: isNarrow ? 18 : 20,
                                   ),
-                                  tooltip: 'Settings',
+                                  tooltip: 'New Session',
                                   onPressed: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
-                                        builder: (_) => const SettingsScreen(),
+                                        builder: (_) =>
+                                            const SessionEditorScreen(),
                                       ),
                                     );
                                   },
                                   padding: EdgeInsets.all(isNarrow ? 8 : 12),
                                   constraints: const BoxConstraints(),
                                 ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Content
-                  Expanded(
-                    child: (totalTabs > 1 && isControllerValid)
-                        ? TabBarView(
-                            controller: _tabController,
-                            children: [
-                              _SessionListView(),
-                              ...tabManager.tabs.map((tab) {
-                                return _TerminalTabView(tab: tab);
-                              }),
+                              // Settings Button
+                              IconButton(
+                                icon: Icon(
+                                  Icons.settings,
+                                  size: isNarrow ? 18 : 20,
+                                ),
+                                tooltip: 'Settings',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const SettingsScreen(),
+                                    ),
+                                  );
+                                },
+                                padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                constraints: const BoxConstraints(),
+                              ),
                             ],
-                          )
-                        : _SessionListView(),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ), // Column
-            ), // Scaffold
-          ), // Actions
-        ), // Shortcuts
+                ),
+                const SizedBox(height: 8),
+                // Content
+                Expanded(
+                  child: (totalTabs > 1 && isControllerValid)
+                      ? TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _SessionListView(),
+                            ...tabManager.tabs.map((tab) {
+                              return _TerminalTabView(tab: tab);
+                            }),
+                          ],
+                        )
+                      : _SessionListView(),
+                ),
+              ],
+            ), // Column
+          ), // Scaffold
+        ), // Actions
       ), // Focus
     ); // FocusScope
   } // build method
 } // _SessionListScreenState
-
-// Intent classes for keyboard shortcuts
-class NextTabIntent extends Intent {
-  const NextTabIntent();
-}
-
-class PreviousTabIntent extends Intent {
-  const PreviousTabIntent();
-}
-
-class CloseTabIntent extends Intent {
-  const CloseTabIntent();
-}
-
-class GoToSessionsIntent extends Intent {
-  const GoToSessionsIntent();
-}
-
-class OpenSettingsIntent extends Intent {
-  const OpenSettingsIntent();
-}
 
 class _SessionListView extends ConsumerStatefulWidget {
   @override

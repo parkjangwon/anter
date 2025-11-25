@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/theme_provider.dart';
 import 'settings_provider.dart';
 import '../domain/settings_state.dart';
+import '../domain/shortcut_intents.dart';
+import 'widgets/shortcut_settings_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -56,79 +58,86 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
         return KeyEventResult.ignored;
       },
-      child: Scaffold(
-        body: Column(
-          children: [
-            if (isMacOS) const SizedBox(height: 28),
-            // Header with search
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 600;
-                  return Container(
-                    padding: EdgeInsets.all(isNarrow ? 8 : 16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Theme.of(context).dividerColor,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.of(context).pop(),
-                          padding: EdgeInsets.all(isNarrow ? 8 : 12),
-                          constraints: const BoxConstraints(),
-                        ),
-                        SizedBox(width: isNarrow ? 8 : 16),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            decoration: InputDecoration(
-                              hintText: isNarrow
-                                  ? 'Search...'
-                                  : 'Search settings...',
-                              prefixIcon: const Icon(Icons.search, size: 20),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 20),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() => _searchQuery = '');
-                                      },
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: isNarrow ? 8 : 12,
-                                vertical: isNarrow ? 6 : 8,
-                              ),
-                              isDense: true,
-                            ),
-                            onChanged: (value) {
-                              setState(
-                                () => _searchQuery = value.toLowerCase(),
-                              );
-                            },
+      child: Actions(
+        actions: {
+          OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+            onInvoke: (_) => null, // Do nothing if already in settings
+          ),
+        },
+        child: Scaffold(
+          body: Column(
+            children: [
+              if (isMacOS) const SizedBox(height: 28),
+              // Header with search
+              SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 600;
+                    return Container(
+                      padding: EdgeInsets.all(isNarrow ? 8 : 16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context).dividerColor,
+                            width: 1,
                           ),
                         ),
-                      ],
-                    ),
-                  );
-                },
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => Navigator.of(context).pop(),
+                            padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                            constraints: const BoxConstraints(),
+                          ),
+                          SizedBox(width: isNarrow ? 8 : 16),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              decoration: InputDecoration(
+                                hintText: isNarrow
+                                    ? 'Search...'
+                                    : 'Search settings...',
+                                prefixIcon: const Icon(Icons.search, size: 20),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 20),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: isNarrow ? 8 : 12,
+                                  vertical: isNarrow ? 6 : 8,
+                                ),
+                                isDense: true,
+                              ),
+                              onChanged: (value) {
+                                setState(
+                                  () => _searchQuery = value.toLowerCase(),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            // Settings content
-            Expanded(child: _SettingsContent(searchQuery: _searchQuery)),
-          ],
+              const SizedBox(height: 8),
+              // Settings content
+              Expanded(child: _SettingsContent(searchQuery: _searchQuery)),
+            ],
+          ),
         ),
       ),
     );
@@ -289,6 +298,14 @@ class _SettingsContent extends ConsumerWidget {
             ),
         ]),
       );
+    }
+
+    // Shortcuts Section
+    if (_matchesSearch('shortcut') ||
+        _matchesSearch('keyboard') ||
+        _matchesSearch('binding') ||
+        _matchesSearch('key')) {
+      sections.add(const ShortcutSettingsSection());
     }
 
     if (sections.isEmpty) {

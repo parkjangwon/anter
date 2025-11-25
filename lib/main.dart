@@ -7,6 +7,10 @@ import 'src/features/session/presentation/session_list_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'src/features/settings/presentation/settings_provider.dart';
+import 'src/features/settings/presentation/shortcuts_provider.dart';
+import 'src/features/settings/domain/shortcut_action.dart';
+import 'src/features/settings/domain/shortcut_intents.dart';
+import 'src/features/settings/presentation/settings_screen.dart';
 
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
@@ -84,31 +88,83 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeControllerProvider);
 
-    return MaterialApp(
-      navigatorKey: _navigatorKey, // Assign key
-      title: 'Anter',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.light,
+    final shortcuts = ref.watch(shortcutsProvider);
+
+    // Build the shortcuts map
+    final shortcutsMap = <ShortcutActivator, Intent>{};
+    for (final action in shortcuts.keys) {
+      final activators = shortcuts[action] ?? [];
+      for (final activator in activators) {
+        switch (action) {
+          case ShortcutAction.openSettings:
+            shortcutsMap[activator] = const OpenSettingsIntent();
+            break;
+          case ShortcutAction.newTab:
+            shortcutsMap[activator] = const NewTabIntent();
+            break;
+          case ShortcutAction.closeTab:
+            shortcutsMap[activator] = const CloseTabIntent();
+            break;
+          case ShortcutAction.nextTab:
+            shortcutsMap[activator] = const NextTabIntent();
+            break;
+          case ShortcutAction.previousTab:
+            shortcutsMap[activator] = const PreviousTabIntent();
+            break;
+          case ShortcutAction.zoomIn:
+            shortcutsMap[activator] = const ZoomInIntent();
+            break;
+          case ShortcutAction.zoomOut:
+            shortcutsMap[activator] = const ZoomOutIntent();
+            break;
+          case ShortcutAction.resetZoom:
+            shortcutsMap[activator] = const ResetZoomIntent();
+            break;
+        }
+      }
+    }
+
+    return Shortcuts(
+      shortcuts: shortcutsMap,
+      child: Actions(
+        actions: {
+          OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+            onInvoke: (intent) {
+              Navigator.of(_navigatorKey.currentContext!).push(
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+              return null;
+            },
+          ),
+          // Other global actions can be defined here or in specific screens
+        },
+        child: MaterialApp(
+          navigatorKey: _navigatorKey, // Assign key
+          title: 'Anter',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6750A4),
+              brightness: Brightness.light,
+            ),
+            textTheme: GoogleFonts.interTextTheme(),
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFD0BCFF),
+              brightness: Brightness.dark,
+            ),
+            textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+          ),
+          themeMode: themeMode,
+          home: PopScope(
+            canPop: !Platform.isAndroid,
+            onPopInvoked: _onPopInvoked,
+            child: const SessionListScreen(),
+          ),
         ),
-        textTheme: GoogleFonts.interTextTheme(),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFD0BCFF),
-          brightness: Brightness.dark,
-        ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-      ),
-      themeMode: themeMode,
-      home: PopScope(
-        canPop: !Platform.isAndroid,
-        onPopInvoked: _onPopInvoked,
-        child: const SessionListScreen(),
       ),
     );
   }
@@ -118,7 +174,8 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
 
     if (Platform.isAndroid) {
       final now = DateTime.now();
-      final isFirstPress = _lastBackPressed == null ||
+      final isFirstPress =
+          _lastBackPressed == null ||
           now.difference(_lastBackPressed!) > const Duration(seconds: 2);
 
       if (isFirstPress) {
