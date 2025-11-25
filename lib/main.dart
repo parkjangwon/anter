@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:anter/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'src/core/theme/theme_provider.dart';
 import 'src/features/session/presentation/session_list_screen.dart';
@@ -10,25 +9,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/features/settings/presentation/settings_provider.dart';
 
 import 'package:window_manager/window_manager.dart';
+import 'dart:io';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
 
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(1200, 800),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    await windowManager.ensureInitialized();
 
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(1200, 800),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   runApp(
     ProviderScope(
@@ -46,11 +49,15 @@ class AnterApp extends ConsumerStatefulWidget {
 }
 
 class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
+  DateTime? _lastBackPressed;
+
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    _initWindow();
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      windowManager.addListener(this);
+      _initWindow();
+    }
   }
 
   Future<void> _initWindow() async {
@@ -64,7 +71,9 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      windowManager.removeListener(this);
+    }
     super.dispose();
   }
 
@@ -79,13 +88,6 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
       navigatorKey: _navigatorKey, // Assign key
       title: 'Anter',
       debugShowCheckedModeBanner: false,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('en'), Locale('ko')],
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -103,8 +105,37 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
         textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       ),
       themeMode: themeMode,
-      home: const SessionListScreen(),
+      home: PopScope(
+        canPop: !Platform.isAndroid,
+        onPopInvoked: _onPopInvoked,
+        child: const SessionListScreen(),
+      ),
     );
+  }
+
+  void _onPopInvoked(bool didPop) {
+    if (didPop) return;
+
+    if (Platform.isAndroid) {
+      final now = DateTime.now();
+      final isFirstPress = _lastBackPressed == null ||
+          now.difference(_lastBackPressed!) > const Duration(seconds: 2);
+
+      if (isFirstPress) {
+        _lastBackPressed = now;
+        final context = _navigatorKey.currentContext;
+        if (context != null && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+      SystemNavigator.pop();
+    }
   }
 
   // Override onWindowClose to use _navigatorKey

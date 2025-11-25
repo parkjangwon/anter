@@ -30,6 +30,14 @@ class SessionRepository extends AsyncNotifier<List<Session>> {
     ref.invalidateSelf();
   }
 
+  Future<void> upsert(SessionsCompanion session) async {
+    if (session.id.present) {
+      await updateSession(session);
+    } else {
+      await addSession(session);
+    }
+  }
+
   Future<void> deleteSession(int id) async {
     final db = ref.read(databaseProvider);
     await (db.delete(db.sessions)..where((t) => t.id.equals(id))).go();

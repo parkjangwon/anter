@@ -62,56 +62,67 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             if (isMacOS) const SizedBox(height: 28),
             // Header with search
             SafeArea(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(context).dividerColor,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        decoration: InputDecoration(
-                          hintText: 'Search settings...',
-                          prefixIcon: const Icon(Icons.search, size: 20),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 20),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          isDense: true,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 600;
+                  return Container(
+                    padding: EdgeInsets.all(isNarrow ? 8 : 16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Theme.of(context).dividerColor,
+                          width: 1,
                         ),
-                        onChanged: (value) {
-                          setState(() => _searchQuery = value.toLowerCase());
-                        },
                       ),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                          constraints: const BoxConstraints(),
+                        ),
+                        SizedBox(width: isNarrow ? 8 : 16),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            decoration: InputDecoration(
+                              hintText: isNarrow
+                                  ? 'Search...'
+                                  : 'Search settings...',
+                              prefixIcon: const Icon(Icons.search, size: 20),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 20),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: isNarrow ? 8 : 12,
+                                vertical: isNarrow ? 6 : 8,
+                              ),
+                              isDense: true,
+                            ),
+                            onChanged: (value) {
+                              setState(
+                                () => _searchQuery = value.toLowerCase(),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 8),
@@ -252,15 +263,29 @@ class _SettingsContent extends ConsumerWidget {
               (value) => notifier.setAutoReconnect(value),
             ),
           if (_matchesSearch('startup mode'))
-            _buildDropdownSetting<StartupMode>(
-              'Startup Mode',
-              settings.startupMode,
-              const [
-                (StartupMode.sessionList, 'Session List'),
-                (StartupMode.localTerminal, 'Local Terminal'),
-              ],
-              (mode) => notifier.setStartupMode(mode),
-              subtitle: 'Choose what to show when the app starts',
+            Builder(
+              builder: (context) {
+                final platform = Theme.of(context).platform;
+                final isMobile =
+                    platform == TargetPlatform.android ||
+                    platform == TargetPlatform.iOS;
+
+                // Filter startup modes based on platform
+                final availableModes = isMobile
+                    ? [(StartupMode.sessionList, 'Session List')]
+                    : [
+                        (StartupMode.sessionList, 'Session List'),
+                        (StartupMode.localTerminal, 'Local Terminal'),
+                      ];
+
+                return _buildDropdownSetting<StartupMode>(
+                  'Startup Mode',
+                  settings.startupMode,
+                  availableModes,
+                  (mode) => notifier.setStartupMode(mode),
+                  subtitle: 'Choose what to show when the app starts',
+                );
+              },
             ),
         ]),
       );
@@ -282,7 +307,15 @@ class _SettingsContent extends ConsumerWidget {
       );
     }
 
-    return ListView(padding: const EdgeInsets.all(16), children: sections);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+        return ListView(
+          padding: EdgeInsets.all(isNarrow ? 8 : 16),
+          children: sections,
+        );
+      },
+    );
   }
 
   Widget _buildSection(
@@ -300,12 +333,12 @@ class _SettingsContent extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              Icon(icon, size: 20),
+              Icon(icon, size: 18),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -333,11 +366,11 @@ class _SettingsContent extends ConsumerWidget {
     void Function(double) onChanged,
   ) {
     return ListTile(
-      title: Text(title),
+      title: Text(title, style: const TextStyle(fontSize: 14)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(subtitle),
+          Text(subtitle, style: const TextStyle(fontSize: 12)),
           Slider(
             value: value,
             min: min,
@@ -358,18 +391,79 @@ class _SettingsContent extends ConsumerWidget {
     void Function(T) onChanged, {
     String? subtitle,
   }) {
-    return ListTile(
-      title: Text(title),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: DropdownButton<T>(
-        value: value,
-        onChanged: (newValue) {
-          if (newValue != null) onChanged(newValue);
-        },
-        items: items.map((item) {
-          return DropdownMenuItem(value: item.$1, child: Text(item.$2));
-        }).toList(),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+
+        if (isNarrow) {
+          // Vertical layout for narrow screens
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: DropdownButton<T>(
+                    value: value,
+                    isExpanded: true,
+                    onChanged: (newValue) {
+                      if (newValue != null) onChanged(newValue);
+                    },
+                    items: items.map((item) {
+                      return DropdownMenuItem(
+                        value: item.$1,
+                        child: Text(
+                          item.$2,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Horizontal layout for wider screens
+        return ListTile(
+          title: Text(title, style: const TextStyle(fontSize: 14)),
+          subtitle: subtitle != null
+              ? Text(subtitle, style: const TextStyle(fontSize: 12))
+              : null,
+          trailing: DropdownButton<T>(
+            value: value,
+            onChanged: (newValue) {
+              if (newValue != null) onChanged(newValue);
+            },
+            items: items.map((item) {
+              return DropdownMenuItem(
+                value: item.$1,
+                child: Text(item.$2, style: const TextStyle(fontSize: 14)),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
@@ -380,37 +474,48 @@ class _SettingsContent extends ConsumerWidget {
     void Function(bool) onChanged,
   ) {
     return SwitchListTile(
-      title: Text(title),
-      subtitle: Text(subtitle),
+      title: Text(title, style: const TextStyle(fontSize: 14)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       value: value,
       onChanged: onChanged,
     );
   }
 
   Widget _buildColorSchemeSetting(SettingsState settings, dynamic notifier) {
-    return ListTile(
-      title: const Text('Color Scheme'),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(settings.colorScheme.displayName),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: TerminalColorScheme.values.map((scheme) {
-              final isSelected = settings.colorScheme == scheme;
-              return ChoiceChip(
-                label: Text(scheme.displayName),
-                selected: isSelected,
-                onSelected: (selected) {
-                  if (selected) notifier.setColorScheme(scheme);
-                },
-              );
-            }).toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+        return ListTile(
+          title: const Text('Color Scheme', style: TextStyle(fontSize: 14)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                settings.colorScheme.displayName,
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: isNarrow ? 4 : 8,
+                runSpacing: isNarrow ? 4 : 8,
+                children: TerminalColorScheme.values.map((scheme) {
+                  final isSelected = settings.colorScheme == scheme;
+                  return ChoiceChip(
+                    label: Text(
+                      scheme.displayName,
+                      style: TextStyle(fontSize: isNarrow ? 12 : 14),
+                    ),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) notifier.setColorScheme(scheme);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

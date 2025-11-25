@@ -39,7 +39,12 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
     // Check startup mode
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = ref.read(settingsProvider);
-      if (settings.startupMode == StartupMode.localTerminal) {
+      final platform = Theme.of(context).platform;
+      final isMobile =
+          platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+
+      // Skip local terminal on mobile platforms
+      if (settings.startupMode == StartupMode.localTerminal && !isMobile) {
         _openLocalTerminal();
       }
     });
@@ -188,134 +193,188 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                   if (isMacOS) const SizedBox(height: 28),
                   // Custom Top Bar
                   SafeArea(
-                    child: GestureDetector(
-                      onTap: () {
-                        // Unfocus any focused terminal to allow global shortcuts to work
-                        FocusScope.of(context).requestFocus(FocusNode());
-                      },
-                      child: Container(
-                        height: 40,
-                        color: Theme.of(context).colorScheme.surface,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TabBar(
-                                controller: _tabController,
-                                isScrollable: true,
-                                tabAlignment: TabAlignment.start,
-                                dividerColor: Colors.transparent,
-                                labelPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                tabs: [
-                                  const Tab(
-                                    height: 40,
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.list, size: 16),
-                                        SizedBox(width: 8),
-                                        Text('Sessions'),
-                                      ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 600;
+                        return GestureDetector(
+                          onTap: () {
+                            // Unfocus any focused terminal to allow global shortcuts to work
+                            FocusScope.of(context).requestFocus(FocusNode());
+                          },
+                          child: Container(
+                            height: 40,
+                            color: Theme.of(context).colorScheme.surface,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TabBar(
+                                    controller: _tabController,
+                                    isScrollable: true,
+                                    tabAlignment: TabAlignment.start,
+                                    dividerColor: Colors.transparent,
+                                    labelPadding: EdgeInsets.symmetric(
+                                      horizontal: isNarrow ? 8 : 16,
                                     ),
-                                  ),
-                                  ...tabManager.tabs.asMap().entries.map((
-                                    entry,
-                                  ) {
-                                    final index = entry.key;
-                                    final tab = entry.value;
-                                    final tabContent = SizedBox(
-                                      width: 120,
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              tab.title,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 12,
+                                    tabs: [
+                                      Tab(
+                                        height: 40,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.list,
+                                              size: isNarrow ? 14 : 16,
+                                            ),
+                                            SizedBox(width: isNarrow ? 4 : 8),
+                                            Text(
+                                              'Sessions',
+                                              style: TextStyle(
+                                                fontSize: isNarrow ? 12 : 14,
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          InkWell(
-                                            onTap: () {
-                                              ref
-                                                  .read(
-                                                    tabManagerProvider.notifier,
-                                                  )
-                                                  .closeTab(index);
-                                            },
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            child: const Padding(
-                                              padding: EdgeInsets.all(2.0),
-                                              child: Icon(
-                                                Icons.close,
-                                                size: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    );
+                                      ...tabManager.tabs.asMap().entries.map((
+                                        entry,
+                                      ) {
+                                        final index = entry.key;
+                                        final tab = entry.value;
+                                        final tabContent = SizedBox(
+                                          width: isNarrow ? 100 : 120,
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  tab.title,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: isNarrow
+                                                        ? 11
+                                                        : 12,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: isNarrow ? 2 : 4),
+                                              InkWell(
+                                                onTap: () {
+                                                  ref
+                                                      .read(
+                                                        tabManagerProvider
+                                                            .notifier,
+                                                      )
+                                                      .closeTab(index);
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(
+                                                    isNarrow ? 1.0 : 2.0,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.close,
+                                                    size: isNarrow ? 12 : 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
 
-                                    return Draggable<int>(
-                                      data: index,
-                                      feedback: Material(
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                            maxWidth: 150,
-                                            maxHeight: 40,
+                                        return Draggable<int>(
+                                          data: index,
+                                          feedback: Material(
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(
+                                                maxWidth: isNarrow ? 120 : 150,
+                                                maxHeight: 40,
+                                              ),
+                                              child: Tab(
+                                                height: 40,
+                                                child: tabContent,
+                                              ),
+                                            ),
                                           ),
                                           child: Tab(
                                             height: 40,
                                             child: tabContent,
                                           ),
-                                        ),
-                                      ),
-                                      child: Tab(height: 40, child: tabContent),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ),
-                            // Local Terminal Button
-                            if (_tabController.index == 0)
-                              IconButton(
-                                icon: const Icon(Icons.terminal, size: 20),
-                                tooltip: 'Open Local Terminal',
-                                onPressed: _openLocalTerminal,
-                              ),
-                            // + Button (only show on Sessions tab)
-                            if (_tabController.index == 0)
-                              IconButton(
-                                icon: const Icon(Icons.add, size: 20),
-                                tooltip: 'New Session',
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const SessionEditorScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            // Settings Button
-                            IconButton(
-                              icon: const Icon(Icons.settings, size: 20),
-                              tooltip: 'Settings',
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const SettingsScreen(),
+                                        );
+                                      }),
+                                    ],
                                   ),
-                                );
-                              },
+                                ),
+                                // Local Terminal Button (desktop only)
+                                if (_tabController.index == 0)
+                                  Builder(
+                                    builder: (context) {
+                                      final platform = Theme.of(
+                                        context,
+                                      ).platform;
+                                      final isMobile =
+                                          platform == TargetPlatform.android ||
+                                          platform == TargetPlatform.iOS;
+
+                                      // Hide local terminal button on mobile
+                                      if (isMobile) {
+                                        return const SizedBox.shrink();
+                                      }
+
+                                      return IconButton(
+                                        icon: Icon(
+                                          Icons.terminal,
+                                          size: isNarrow ? 18 : 20,
+                                        ),
+                                        tooltip: 'Open Local Terminal',
+                                        onPressed: _openLocalTerminal,
+                                        padding: EdgeInsets.all(
+                                          isNarrow ? 8 : 12,
+                                        ),
+                                        constraints: const BoxConstraints(),
+                                      );
+                                    },
+                                  ),
+                                // + Button (only show on Sessions tab)
+                                if (_tabController.index == 0)
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.add,
+                                      size: isNarrow ? 18 : 20,
+                                    ),
+                                    tooltip: 'New Session',
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const SessionEditorScreen(),
+                                        ),
+                                      );
+                                    },
+                                    padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                // Settings Button
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.settings,
+                                    size: isNarrow ? 18 : 20,
+                                  ),
+                                  tooltip: 'Settings',
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const SettingsScreen(),
+                                      ),
+                                    );
+                                  },
+                                  padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -500,158 +559,205 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
 
         return Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CallbackShortcuts(
-                bindings: {
-                  const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                    setState(() {
-                      if (_selectedIndex < filteredSessions.length - 1) {
-                        _selectedIndex++;
-                        _scrollToSelected();
-                      }
-                    });
-                  },
-                  const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                    setState(() {
-                      if (_selectedIndex > 0) {
-                        _selectedIndex--;
-                        _scrollToSelected();
-                      }
-                    });
-                  },
-                  const SingleActivator(LogicalKeyboardKey.enter): () {
-                    if (filteredSessions.isNotEmpty) {
-                      _handleConnect(filteredSessions[_selectedIndex]);
-                    }
-                  },
-                },
-                child: TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  decoration: InputDecoration(
-                    hintText: 'Search sessions or tags...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 600;
+                return Padding(
+                  padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
+                  child: CallbackShortcuts(
+                    bindings: {
+                      const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                        setState(() {
+                          if (_selectedIndex < filteredSessions.length - 1) {
+                            _selectedIndex++;
+                            _scrollToSelected();
+                          }
+                        });
+                      },
+                      const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                        setState(() {
+                          if (_selectedIndex > 0) {
+                            _selectedIndex--;
+                            _scrollToSelected();
+                          }
+                        });
+                      },
+                      const SingleActivator(LogicalKeyboardKey.enter): () {
+                        if (filteredSessions.isNotEmpty) {
+                          _handleConnect(filteredSessions[_selectedIndex]);
+                        }
+                      },
+                    },
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: isNarrow
+                            ? 'Search...'
+                            : 'Search sessions or tags...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: isNarrow ? 12 : 16,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value.toLowerCase();
+                          _selectedIndex = 0; // Reset selection on search
+                        });
+                      },
+                      onSubmitted: (_) {
+                        if (filteredSessions.isNotEmpty) {
+                          _handleConnect(filteredSessions[_selectedIndex]);
+                        }
+                      },
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                      _selectedIndex = 0; // Reset selection on search
-                    });
-                  },
-                  onSubmitted: (_) {
-                    if (filteredSessions.isNotEmpty) {
-                      _handleConnect(filteredSessions[_selectedIndex]);
-                    }
-                  },
-                ),
-              ),
+                );
+              },
             ),
             Expanded(
               child: filteredSessions.isEmpty
                   ? const Center(child: Text('No matching sessions found'))
-                  : ListView.builder(
-                      controller: _scrollController,
-                      itemCount: filteredSessions.length,
-                      itemBuilder: (context, index) {
-                        final session = filteredSessions[index];
-                        final isSelected = index == _selectedIndex;
-                        return Card(
-                          color: isSelected
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer.withOpacity(0.3)
-                              : null,
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: ListTile(
-                            selected: isSelected,
-                            onTap: () {
-                              setState(() {
-                                _selectedIndex = index;
-                              });
-                              _handleConnect(session);
-                            },
-                            leading: CircleAvatar(
-                              child: Icon(
-                                session.host.toLowerCase() == 'local'
-                                    ? Icons.computer
-                                    : Icons.cloud,
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 600;
+                        return ListView.builder(
+                          controller: _scrollController,
+                          itemCount: filteredSessions.length,
+                          itemBuilder: (context, index) {
+                            final session = filteredSessions[index];
+                            final isSelected = index == _selectedIndex;
+                            return Card(
+                              color: isSelected
+                                  ? Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                        .withOpacity(0.3)
+                                  : null,
+                              margin: EdgeInsets.symmetric(
+                                horizontal: isNarrow ? 8 : 16,
+                                vertical: isNarrow ? 4 : 8,
                               ),
-                            ),
-                            title: Row(
-                              children: [
-                                Text(
-                                  session.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                              child: ListTile(
+                                selected: isSelected,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: isNarrow ? 8 : 16,
+                                  vertical: isNarrow ? 4 : 8,
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedIndex = index;
+                                  });
+                                  _handleConnect(session);
+                                },
+                                leading: CircleAvatar(
+                                  radius: isNarrow ? 18 : 20,
+                                  child: Icon(
+                                    session.host.toLowerCase() == 'local'
+                                        ? Icons.computer
+                                        : Icons.cloud,
+                                    size: isNarrow ? 18 : 24,
                                   ),
                                 ),
-                                if (session.tag != null &&
-                                    session.tag!.isNotEmpty) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '#${session.tag}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimaryContainer,
+                                title: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        session.name,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isNarrow ? 14 : 16,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            subtitle: Text(
-                              session.host.toLowerCase() == 'local'
-                                  ? 'Local Terminal'
-                                  : '${session.username}@${session.host}:${session.port}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.copy),
-                                  tooltip: 'Copy Session',
-                                  onPressed: () => _duplicateSession(session),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => SessionEditorScreen(
-                                          session: session,
+                                    if (session.tag != null &&
+                                        session.tag!.isNotEmpty) ...[
+                                      SizedBox(width: isNarrow ? 4 : 8),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isNarrow ? 6 : 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primaryContainer,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '#${session.tag}',
+                                          style: TextStyle(
+                                            fontSize: isNarrow ? 10 : 12,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer,
+                                          ),
                                         ),
                                       ),
-                                    );
-                                  },
+                                    ],
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.play_arrow),
-                                  onPressed: () => _handleConnect(session),
+                                subtitle: Text(
+                                  session.host.toLowerCase() == 'local'
+                                      ? 'Local Terminal'
+                                      : '${session.username}@${session.host}:${session.port}',
+                                  style: TextStyle(
+                                    fontSize: isNarrow ? 12 : 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
-                          ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.copy,
+                                        size: isNarrow ? 18 : 24,
+                                      ),
+                                      tooltip: 'Copy Session',
+                                      onPressed: () =>
+                                          _duplicateSession(session),
+                                      padding: EdgeInsets.all(isNarrow ? 4 : 8),
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        size: isNarrow ? 18 : 24,
+                                      ),
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => SessionEditorScreen(
+                                              session: session,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      padding: EdgeInsets.all(isNarrow ? 4 : 8),
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.play_arrow,
+                                        size: isNarrow ? 18 : 24,
+                                      ),
+                                      onPressed: () => _handleConnect(session),
+                                      padding: EdgeInsets.all(isNarrow ? 4 : 8),
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
