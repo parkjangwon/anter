@@ -58,12 +58,14 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
             : drift.Value(widget.session!.id),
         name: drift.Value(_nameController.text),
         tag: drift.Value(
-            _tagController.text.isEmpty ? null : _tagController.text),
+          _tagController.text.isEmpty ? null : _tagController.text,
+        ),
         host: drift.Value(_hostController.text),
         port: drift.Value(int.parse(_portController.text)),
         username: drift.Value(_usernameController.text),
         password: drift.Value(
-            _passwordController.text.isEmpty ? null : _passwordController.text),
+          _passwordController.text.isEmpty ? null : _passwordController.text,
+        ),
       );
       await ref.read(sessionRepositoryProvider.notifier).upsert(session);
       if (mounted) {
@@ -74,63 +76,81 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMacOS = Theme.of(context).platform == TargetPlatform.macOS;
+    final double topPadding = isMacOS ? 28.0 : 0.0;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.session == null ? 'New Session' : 'Edit Session'),
+        toolbarHeight: kToolbarHeight + topPadding,
+        leading: isMacOS
+            ? Padding(
+                padding: EdgeInsets.only(top: topPadding),
+                child: const BackButton(),
+              )
+            : null,
+        title: Padding(
+          padding: EdgeInsets.only(top: topPadding),
+          child: Text(widget.session == null ? 'New Session' : 'Edit Session'),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveSession,
+          Padding(
+            padding: EdgeInsets.only(top: topPadding, right: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _saveSession,
+            ),
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
-              validator: (value) =>
-                  value?.isEmpty ?? true ? 'Please enter a name' : null,
-            ),
-            TextFormField(
-              controller: _tagController,
-              decoration: const InputDecoration(labelText: 'Tag'),
-            ),
-            TextFormField(
-              controller: _hostController,
-              decoration: const InputDecoration(labelText: 'Host'),
-              validator: (value) =>
-                  value?.isEmpty ?? true ? 'Please enter a host' : null,
-            ),
-            TextFormField(
-              controller: _portController,
-              decoration: const InputDecoration(labelText: 'Port'),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a port';
-                }
-                if (int.tryParse(value) == null) {
-                  return 'Please enter a valid number';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),
-              validator: (value) =>
-                  value?.isEmpty ?? true ? 'Please enter a username' : null,
-            ),
-            TextFormField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-          ],
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Please enter a name' : null,
+              ),
+              TextFormField(
+                controller: _tagController,
+                decoration: const InputDecoration(labelText: 'Tag'),
+              ),
+              TextFormField(
+                controller: _hostController,
+                decoration: const InputDecoration(labelText: 'Host'),
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Please enter a host' : null,
+              ),
+              TextFormField(
+                controller: _portController,
+                decoration: const InputDecoration(labelText: 'Port'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a port';
+                  }
+                  if (int.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(labelText: 'Username'),
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Please enter a username' : null,
+              ),
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -113,258 +113,242 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
     // Determine modifier key based on platform
     final isMacOS = Theme.of(context).platform == TargetPlatform.macOS;
 
-    return FocusScope(
-      child: Focus(
-        autofocus: true,
-        child: Actions(
-          actions: {
-            NextTabIntent: CallbackAction<NextTabIntent>(
-              onInvoke: (_) {
-                final currentIndex = _tabController.index;
-                final nextIndex = (currentIndex + 1) % totalTabs;
-                _tabController.animateTo(nextIndex);
-                return null;
-              },
-            ),
-            PreviousTabIntent: CallbackAction<PreviousTabIntent>(
-              onInvoke: (_) {
-                final currentIndex = _tabController.index;
-                final prevIndex = (currentIndex - 1 + totalTabs) % totalTabs;
-                _tabController.animateTo(prevIndex);
-                return null;
-              },
-            ),
-            NewTabIntent: CallbackAction<NewTabIntent>(
-              onInvoke: (_) {
-                _tabController.animateTo(0);
-                return null;
-              },
-            ),
-            CloseTabIntent: CallbackAction<CloseTabIntent>(
-              onInvoke: (_) {
-                // Only close if we're on a terminal tab (not session list)
-                if (_tabController.index > 0) {
-                  final tabIndex = _tabController.index - 1;
-                  ref.read(tabManagerProvider.notifier).closeTab(tabIndex);
-                }
-                return null;
-              },
-            ),
-            OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
-              onInvoke: (_) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-                return null;
-              },
-            ),
+    return Actions(
+      actions: {
+        NextTabIntent: CallbackAction<NextTabIntent>(
+          onInvoke: (_) {
+            final currentIndex = _tabController.index;
+            final nextIndex = (currentIndex + 1) % totalTabs;
+            _tabController.animateTo(nextIndex);
+            return null;
           },
-          child: Scaffold(
-            body: Column(
-              children: [
-                if (isMacOS) const SizedBox(height: 28),
-                // Custom Top Bar
-                SafeArea(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isNarrow = constraints.maxWidth < 600;
-                      return GestureDetector(
-                        onTap: () {
-                          // Unfocus any focused terminal to allow global shortcuts to work
-                          FocusScope.of(context).requestFocus(FocusNode());
-                        },
-                        child: Container(
-                          height: 40,
-                          color: Theme.of(context).colorScheme.surface,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TabBar(
-                                  controller: _tabController,
-                                  isScrollable: true,
-                                  tabAlignment: TabAlignment.start,
-                                  dividerColor: Colors.transparent,
-                                  labelPadding: EdgeInsets.symmetric(
-                                    horizontal: isNarrow ? 8 : 16,
-                                  ),
-                                  tabs: [
-                                    Tab(
-                                      height: 40,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.list,
-                                            size: isNarrow ? 14 : 16,
-                                          ),
-                                          SizedBox(width: isNarrow ? 4 : 8),
-                                          Text(
-                                            'Sessions',
-                                            style: TextStyle(
-                                              fontSize: isNarrow ? 12 : 14,
-                                            ),
-                                          ),
-                                        ],
+        ),
+        PreviousTabIntent: CallbackAction<PreviousTabIntent>(
+          onInvoke: (_) {
+            final currentIndex = _tabController.index;
+            final prevIndex = (currentIndex - 1 + totalTabs) % totalTabs;
+            _tabController.animateTo(prevIndex);
+            return null;
+          },
+        ),
+        NewTabIntent: CallbackAction<NewTabIntent>(
+          onInvoke: (_) {
+            _tabController.animateTo(0);
+            return null;
+          },
+        ),
+        CloseTabIntent: CallbackAction<CloseTabIntent>(
+          onInvoke: (_) {
+            // Only close if we're on a terminal tab (not session list)
+            if (_tabController.index > 0) {
+              final tabIndex = _tabController.index - 1;
+              ref.read(tabManagerProvider.notifier).closeTab(tabIndex);
+            }
+            return null;
+          },
+        ),
+        OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+          onInvoke: (_) {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            return null;
+          },
+        ),
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            if (isMacOS) const SizedBox(height: 28),
+            // Custom Top Bar
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 600;
+                  return GestureDetector(
+                    onTap: () {
+                      // Unfocus any focused terminal to allow global shortcuts to work
+                      FocusScope.of(context).requestFocus(FocusNode());
+                    },
+                    child: Container(
+                      height: 40,
+                      color: Theme.of(context).colorScheme.surface,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TabBar(
+                              controller: _tabController,
+                              isScrollable: true,
+                              tabAlignment: TabAlignment.start,
+                              dividerColor: Colors.transparent,
+                              labelPadding: EdgeInsets.symmetric(
+                                horizontal: isNarrow ? 8 : 16,
+                              ),
+                              tabs: [
+                                Tab(
+                                  height: 40,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.list,
+                                        size: isNarrow ? 14 : 16,
                                       ),
-                                    ),
-                                    ...tabManager.tabs.asMap().entries.map((
-                                      entry,
-                                    ) {
-                                      final index = entry.key;
-                                      final tab = entry.value;
-                                      final tabContent = SizedBox(
-                                        width: isNarrow ? 100 : 120,
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                tab.title,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: isNarrow ? 11 : 12,
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(width: isNarrow ? 2 : 4),
-                                            InkWell(
-                                              onTap: () {
-                                                ref
-                                                    .read(
-                                                      tabManagerProvider
-                                                          .notifier,
-                                                    )
-                                                    .closeTab(index);
-                                              },
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              child: Padding(
-                                                padding: EdgeInsets.all(
-                                                  isNarrow ? 1.0 : 2.0,
-                                                ),
-                                                child: Icon(
-                                                  Icons.close,
-                                                  size: isNarrow ? 12 : 14,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                      SizedBox(width: isNarrow ? 4 : 8),
+                                      Text(
+                                        'Sessions',
+                                        style: TextStyle(
+                                          fontSize: isNarrow ? 12 : 14,
                                         ),
-                                      );
-
-                                      return Draggable<int>(
-                                        data: index,
-                                        feedback: Material(
-                                          child: ConstrainedBox(
-                                            constraints: BoxConstraints(
-                                              maxWidth: isNarrow ? 120 : 150,
-                                              maxHeight: 40,
-                                            ),
-                                            child: Tab(
-                                              height: 40,
-                                              child: tabContent,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ...tabManager.tabs.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final tab = entry.value;
+                                  final tabContent = SizedBox(
+                                    width: isNarrow ? 100 : 120,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            tab.title,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: isNarrow ? 11 : 12,
                                             ),
                                           ),
+                                        ),
+                                        SizedBox(width: isNarrow ? 2 : 4),
+                                        InkWell(
+                                          onTap: () {
+                                            ref
+                                                .read(
+                                                  tabManagerProvider.notifier,
+                                                )
+                                                .closeTab(index);
+                                          },
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          child: Padding(
+                                            padding: EdgeInsets.all(
+                                              isNarrow ? 1.0 : 2.0,
+                                            ),
+                                            child: Icon(
+                                              Icons.close,
+                                              size: isNarrow ? 12 : 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  return Draggable<int>(
+                                    data: index,
+                                    feedback: Material(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: isNarrow ? 120 : 150,
+                                          maxHeight: 40,
                                         ),
                                         child: Tab(
                                           height: 40,
                                           child: tabContent,
                                         ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                              // Local Terminal Button (desktop only)
-                              if (_tabController.index == 0)
-                                Builder(
-                                  builder: (context) {
-                                    final platform = Theme.of(context).platform;
-                                    final isMobile =
-                                        platform == TargetPlatform.android ||
-                                        platform == TargetPlatform.iOS;
-
-                                    // Hide local terminal button on mobile
-                                    if (isMobile) {
-                                      return const SizedBox.shrink();
-                                    }
-
-                                    return IconButton(
-                                      icon: Icon(
-                                        Icons.terminal,
-                                        size: isNarrow ? 18 : 20,
                                       ),
-                                      tooltip: 'Open Local Terminal',
-                                      onPressed: _openLocalTerminal,
-                                      padding: EdgeInsets.all(
-                                        isNarrow ? 8 : 12,
-                                      ),
-                                      constraints: const BoxConstraints(),
-                                    );
-                                  },
-                                ),
-                              // + Button (only show on Sessions tab)
-                              if (_tabController.index == 0)
-                                IconButton(
+                                    ),
+                                    child: Tab(height: 40, child: tabContent),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                          // Local Terminal Button (desktop only)
+                          if (_tabController.index == 0)
+                            Builder(
+                              builder: (context) {
+                                final platform = Theme.of(context).platform;
+                                final isMobile =
+                                    platform == TargetPlatform.android ||
+                                    platform == TargetPlatform.iOS;
+
+                                // Hide local terminal button on mobile
+                                if (isMobile) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                return IconButton(
                                   icon: Icon(
-                                    Icons.add,
+                                    Icons.terminal,
                                     size: isNarrow ? 18 : 20,
                                   ),
-                                  tooltip: 'New Session',
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const SessionEditorScreen(),
-                                      ),
-                                    );
-                                  },
+                                  tooltip: 'Open Local Terminal',
+                                  onPressed: _openLocalTerminal,
                                   padding: EdgeInsets.all(isNarrow ? 8 : 12),
                                   constraints: const BoxConstraints(),
+                                );
+                              },
+                            ),
+                          // + Button (only show on Sessions tab)
+                          if (_tabController.index == 0)
+                            IconButton(
+                              icon: Icon(Icons.add, size: isNarrow ? 18 : 20),
+                              tooltip: 'New Session',
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SessionEditorScreen(),
+                                  ),
+                                );
+                              },
+                              padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                              constraints: const BoxConstraints(),
+                            ),
+                          // Settings Button
+                          IconButton(
+                            icon: Icon(
+                              Icons.settings,
+                              size: isNarrow ? 18 : 20,
+                            ),
+                            tooltip: 'Settings',
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
                                 ),
-                              // Settings Button
-                              IconButton(
-                                icon: Icon(
-                                  Icons.settings,
-                                  size: isNarrow ? 18 : 20,
-                                ),
-                                tooltip: 'Settings',
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const SettingsScreen(),
-                                    ),
-                                  );
-                                },
-                                padding: EdgeInsets.all(isNarrow ? 8 : 12),
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
+                              );
+                            },
+                            padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                            constraints: const BoxConstraints(),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Content
-                Expanded(
-                  child: (totalTabs > 1 && isControllerValid)
-                      ? TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _SessionListView(),
-                            ...tabManager.tabs.map((tab) {
-                              return _TerminalTabView(tab: tab);
-                            }),
-                          ],
-                        )
-                      : _SessionListView(),
-                ),
-              ],
-            ), // Column
-          ), // Scaffold
-        ), // Actions
-      ), // Focus
-    ); // FocusScope
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Content
+            Expanded(
+              child: (totalTabs > 1 && isControllerValid)
+                  ? TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _SessionListView(),
+                        ...tabManager.tabs.map((tab) {
+                          return _TerminalTabView(tab: tab);
+                        }),
+                      ],
+                    )
+                  : _SessionListView(),
+            ),
+          ],
+        ), // Column
+      ), // Scaffold
+    ); // Actions
   } // build method
 } // _SessionListScreenState
 
@@ -377,6 +361,8 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _scrollController = ScrollController();
+  bool _isSelectionMode = false;
+  final Set<int> _selectedSessionIds = {};
   String _searchQuery = '';
   int _selectedIndex = 0;
 
@@ -398,6 +384,10 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
   }
 
   void _handleConnect(Session session) async {
+    if (_isSelectionMode) {
+      _toggleSelection(session.id);
+      return;
+    }
     print('Connect to ${session.name}');
     try {
       await ref.read(tabManagerProvider.notifier).createTab(session);
@@ -411,6 +401,57 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  void _toggleSelection(int sessionId) {
+    setState(() {
+      if (_selectedSessionIds.contains(sessionId)) {
+        _selectedSessionIds.remove(sessionId);
+        if (_selectedSessionIds.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedSessionIds.add(sessionId);
+        _isSelectionMode = true;
+      }
+    });
+  }
+
+  Future<void> _deleteSelectedSessions() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Sessions'),
+        content: Text(
+          'Are you sure you want to delete ${_selectedSessionIds.length} session(s)?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      for (final id in _selectedSessionIds) {
+        await ref.read(sessionRepositoryProvider.notifier).deleteSession(id);
+      }
+      setState(() {
+        _selectedSessionIds.clear();
+        _isSelectionMode = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Sessions deleted')));
       }
     }
   }
@@ -504,66 +545,101 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
 
         return Column(
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 600;
-                return Padding(
-                  padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
-                  child: CallbackShortcuts(
-                    bindings: {
-                      const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                        setState(() {
-                          if (_selectedIndex < filteredSessions.length - 1) {
-                            _selectedIndex++;
-                            _scrollToSelected();
-                          }
-                        });
-                      },
-                      const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                        setState(() {
-                          if (_selectedIndex > 0) {
-                            _selectedIndex--;
-                            _scrollToSelected();
-                          }
-                        });
-                      },
-                      const SingleActivator(LogicalKeyboardKey.enter): () {
-                        if (filteredSessions.isNotEmpty) {
-                          _handleConnect(filteredSessions[_selectedIndex]);
-                        }
-                      },
-                    },
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: isNarrow
-                            ? 'Search...'
-                            : 'Search sessions or tags...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: isNarrow ? 12 : 16,
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value.toLowerCase();
-                          _selectedIndex = 0; // Reset selection on search
-                        });
-                      },
-                      onSubmitted: (_) {
-                        if (filteredSessions.isNotEmpty) {
-                          _handleConnect(filteredSessions[_selectedIndex]);
-                        }
-                      },
+            if (_isSelectionMode)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Row(
+                  children: [
+                    Text(
+                      '${_selectedSessionIds.length} selected',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ),
-                );
-              },
-            ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: _deleteSelectedSessions,
+                      tooltip: 'Delete selected',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          _isSelectionMode = false;
+                          _selectedSessionIds.clear();
+                        });
+                      },
+                      tooltip: 'Cancel selection',
+                    ),
+                  ],
+                ),
+              )
+            else
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 600;
+                  return Padding(
+                    padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
+                    child: CallbackShortcuts(
+                      bindings: {
+                        const SingleActivator(
+                          LogicalKeyboardKey.arrowDown,
+                        ): () {
+                          setState(() {
+                            if (_selectedIndex < filteredSessions.length - 1) {
+                              _selectedIndex++;
+                              _scrollToSelected();
+                            }
+                          });
+                        },
+                        const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                          setState(() {
+                            if (_selectedIndex > 0) {
+                              _selectedIndex--;
+                              _scrollToSelected();
+                            }
+                          });
+                        },
+                        const SingleActivator(LogicalKeyboardKey.enter): () {
+                          if (filteredSessions.isNotEmpty) {
+                            _handleConnect(filteredSessions[_selectedIndex]);
+                          }
+                        },
+                      },
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        decoration: InputDecoration(
+                          hintText: isNarrow
+                              ? 'Search...'
+                              : 'Search sessions or tags...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: isNarrow ? 12 : 16,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.toLowerCase();
+                            _selectedIndex = 0; // Reset selection on search
+                          });
+                        },
+                        onSubmitted: (_) {
+                          if (filteredSessions.isNotEmpty) {
+                            _handleConnect(filteredSessions[_selectedIndex]);
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
             Expanded(
               child: filteredSessions.isEmpty
                   ? const Center(child: Text('No matching sessions found'))
@@ -576,13 +652,22 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
                           itemBuilder: (context, index) {
                             final session = filteredSessions[index];
                             final isSelected = index == _selectedIndex;
+                            final isChecked = _selectedSessionIds.contains(
+                              session.id,
+                            );
+
                             return Card(
-                              color: isSelected
+                              color: isChecked
                                   ? Theme.of(context)
                                         .colorScheme
-                                        .primaryContainer
-                                        .withOpacity(0.3)
-                                  : null,
+                                        .secondaryContainer
+                                        .withOpacity(0.5)
+                                  : (isSelected
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .primaryContainer
+                                              .withOpacity(0.3)
+                                        : null),
                               margin: EdgeInsets.symmetric(
                                 horizontal: isNarrow ? 8 : 16,
                                 vertical: isNarrow ? 4 : 8,
@@ -599,15 +684,24 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
                                   });
                                   _handleConnect(session);
                                 },
-                                leading: CircleAvatar(
-                                  radius: isNarrow ? 18 : 20,
-                                  child: Icon(
-                                    session.host.toLowerCase() == 'local'
-                                        ? Icons.computer
-                                        : Icons.cloud,
-                                    size: isNarrow ? 18 : 24,
-                                  ),
-                                ),
+                                onLongPress: () {
+                                  _toggleSelection(session.id);
+                                },
+                                leading: _isSelectionMode
+                                    ? Checkbox(
+                                        value: isChecked,
+                                        onChanged: (val) =>
+                                            _toggleSelection(session.id),
+                                      )
+                                    : CircleAvatar(
+                                        radius: isNarrow ? 18 : 20,
+                                        child: Icon(
+                                          session.host.toLowerCase() == 'local'
+                                              ? Icons.computer
+                                              : Icons.cloud,
+                                          size: isNarrow ? 18 : 24,
+                                        ),
+                                      ),
                                 title: Row(
                                   children: [
                                     Flexible(
@@ -658,48 +752,58 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.copy,
-                                        size: isNarrow ? 18 : 24,
-                                      ),
-                                      tooltip: 'Copy Session',
-                                      onPressed: () =>
-                                          _duplicateSession(session),
-                                      padding: EdgeInsets.all(isNarrow ? 4 : 8),
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.edit,
-                                        size: isNarrow ? 18 : 24,
-                                      ),
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => SessionEditorScreen(
-                                              session: session,
+                                trailing: _isSelectionMode
+                                    ? null
+                                    : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.copy,
+                                              size: isNarrow ? 18 : 24,
                                             ),
+                                            tooltip: 'Copy Session',
+                                            onPressed: () =>
+                                                _duplicateSession(session),
+                                            padding: EdgeInsets.all(
+                                              isNarrow ? 4 : 8,
+                                            ),
+                                            constraints: const BoxConstraints(),
                                           ),
-                                        );
-                                      },
-                                      padding: EdgeInsets.all(isNarrow ? 4 : 8),
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.play_arrow,
-                                        size: isNarrow ? 18 : 24,
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit,
+                                              size: isNarrow ? 18 : 24,
+                                            ),
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      SessionEditorScreen(
+                                                        session: session,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                            padding: EdgeInsets.all(
+                                              isNarrow ? 4 : 8,
+                                            ),
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.play_arrow,
+                                              size: isNarrow ? 18 : 24,
+                                            ),
+                                            onPressed: () =>
+                                                _handleConnect(session),
+                                            padding: EdgeInsets.all(
+                                              isNarrow ? 4 : 8,
+                                            ),
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ],
                                       ),
-                                      onPressed: () => _handleConnect(session),
-                                      padding: EdgeInsets.all(isNarrow ? 4 : 8),
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                  ],
-                                ),
                               ),
                             );
                           },

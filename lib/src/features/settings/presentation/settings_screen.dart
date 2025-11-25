@@ -5,6 +5,7 @@ import '../../../core/theme/theme_provider.dart';
 import 'settings_provider.dart';
 import '../domain/settings_state.dart';
 import '../domain/shortcut_intents.dart';
+import '../application/backup_service.dart';
 import 'widgets/shortcut_settings_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -306,6 +307,111 @@ class _SettingsContent extends ConsumerWidget {
         _matchesSearch('binding') ||
         _matchesSearch('key')) {
       sections.add(const ShortcutSettingsSection());
+    }
+
+    // Backup & Restore Section
+    if (_matchesSearch('backup') ||
+        _matchesSearch('restore') ||
+        _matchesSearch('export') ||
+        _matchesSearch('import')) {
+      sections.add(
+        _buildSection(context, 'Backup & Restore', Icons.save, [
+          ListTile(
+            title: const Text('Export Backup'),
+            subtitle: const Text('Save all settings and sessions to a file'),
+            leading: const Icon(Icons.upload_file),
+            onTap: () async {
+              try {
+                final success = await ref
+                    .read(backupServiceProvider)
+                    .exportBackup();
+                if (success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Backup exported successfully'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Export failed: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          ListTile(
+            title: const Text('Import Backup'),
+            subtitle: const Text('Restore settings and sessions from a file'),
+            leading: const Icon(Icons.file_download),
+            onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Restore Backup'),
+                  content: const Text(
+                    'This will overwrite existing settings and sessions. Are you sure?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Restore'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed == true) {
+                if (!context.mounted) return;
+
+                // Show loading indicator
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) =>
+                      const Center(child: CircularProgressIndicator()),
+                );
+
+                try {
+                  await ref.read(backupServiceProvider).importBackup();
+
+                  if (context.mounted) {
+                    // Hide loading indicator
+                    Navigator.of(context).pop();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Backup restored successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    // Hide loading indicator
+                    Navigator.of(context).pop();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Restore failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+        ]),
+      );
     }
 
     if (sections.isEmpty) {

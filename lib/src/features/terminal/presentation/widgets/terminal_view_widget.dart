@@ -6,7 +6,7 @@ import '../../../settings/domain/settings_state.dart';
 import '../../../settings/domain/shortcut_intents.dart';
 import '../../../../core/theme/terminal_themes.dart' as app_theme;
 
-class TerminalViewWidget extends ConsumerWidget {
+class TerminalViewWidget extends ConsumerStatefulWidget {
   final Terminal terminal;
   final void Function(String) onInput;
   final FocusNode? focusNode;
@@ -19,7 +19,34 @@ class TerminalViewWidget extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TerminalViewWidget> createState() => _TerminalViewWidgetState();
+}
+
+class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget> {
+  late FocusNode _internalFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _internalFocusNode = widget.focusNode ?? FocusNode();
+    // Only request focus if we created the node or if it's not focused?
+    // Actually, xterm's TerminalView with autofocus: true will handle requestFocus if we pass the node.
+    // But we want to ensure it gets focus when this widget appears.
+    if (widget.focusNode == null) {
+      _internalFocusNode.requestFocus();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.focusNode == null) {
+      _internalFocusNode.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
 
     return Actions(
@@ -48,17 +75,14 @@ class TerminalViewWidget extends ConsumerWidget {
         ),
       },
       child: TerminalView(
-        terminal,
+        widget.terminal,
         textStyle: TerminalStyle(
           fontSize: settings.fontSize,
           fontFamily: settings.fontFamily,
         ),
         autofocus: true,
-        focusNode:
-            focusNode ??
-            (FocusNode()..requestFocus()), // Use provided node or create new
-        backgroundOpacity:
-            0, // Let window opacity handle it, or keep it 0 for transparent background
+        focusNode: _internalFocusNode,
+        backgroundOpacity: 0,
         theme: _getTerminalTheme(settings.colorScheme),
       ),
     );
