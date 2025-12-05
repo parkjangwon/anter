@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 import '../../../settings/presentation/settings_provider.dart';
 import '../../../settings/domain/settings_state.dart';
@@ -22,16 +23,18 @@ class TerminalViewWidget extends ConsumerStatefulWidget {
   ConsumerState<TerminalViewWidget> createState() => _TerminalViewWidgetState();
 }
 
-class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget> {
+class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
+    with AutomaticKeepAliveClientMixin {
   late FocusNode _internalFocusNode;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _internalFocusNode = widget.focusNode ?? FocusNode();
-    // Only request focus if we created the node or if it's not focused?
-    // Actually, xterm's TerminalView with autofocus: true will handle requestFocus if we pass the node.
-    // But we want to ensure it gets focus when this widget appears.
+
     if (widget.focusNode == null) {
       _internalFocusNode.requestFocus();
     }
@@ -47,6 +50,7 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required by AutomaticKeepAliveClientMixin
     final settings = ref.watch(settingsProvider);
 
     return Actions(
@@ -73,17 +77,29 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget> {
             return null;
           },
         ),
+        BlockTabIntent: CallbackAction<BlockTabIntent>(onInvoke: (_) => null),
       },
-      child: TerminalView(
-        widget.terminal,
-        textStyle: TerminalStyle(
-          fontSize: settings.fontSize,
-          fontFamily: settings.fontFamily,
+      child: Shortcuts(
+        shortcuts: {
+          const SingleActivator(LogicalKeyboardKey.tab, control: true):
+              const BlockTabIntent(),
+          const SingleActivator(
+            LogicalKeyboardKey.tab,
+            control: true,
+            shift: true,
+          ): const BlockTabIntent(),
+        },
+        child: TerminalView(
+          widget.terminal,
+          textStyle: TerminalStyle(
+            fontSize: settings.fontSize,
+            fontFamily: settings.fontFamily,
+          ),
+          autofocus: true,
+          focusNode: _internalFocusNode,
+          backgroundOpacity: 0,
+          theme: _getTerminalTheme(settings.colorScheme),
         ),
-        autofocus: true,
-        focusNode: _internalFocusNode,
-        backgroundOpacity: 0,
-        theme: _getTerminalTheme(settings.colorScheme),
       ),
     );
   }
@@ -110,4 +126,8 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget> {
         return app_theme.TerminalThemes.oneLight;
     }
   }
+}
+
+class BlockTabIntent extends Intent {
+  const BlockTabIntent();
 }

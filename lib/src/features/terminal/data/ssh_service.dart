@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:xterm/xterm.dart';
 import 'package:charset_converter/charset_converter.dart';
@@ -74,6 +75,13 @@ class SSHService {
 
       // Pipe terminal input to stdin with encoding conversion
       terminal.onOutput = (data) async {
+        // [Hotfix] Intercept control + tab input to prevent ghost characters
+        // when using global shortcuts.
+        final isCtrl = HardwareKeyboard.instance.isControlPressed;
+        if (isCtrl && (data == '\t' || data.codeUnits.contains(9))) {
+          return;
+        }
+
         session.write(await _encodeWithEncoding(data));
       };
 

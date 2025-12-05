@@ -49,6 +49,41 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
         _openLocalTerminal();
       }
     });
+
+    // Register global key handler
+    HardwareKeyboard.instance.addHandler(_handleGlobalStartKey);
+  }
+
+  bool _handleGlobalStartKey(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return false;
+    }
+
+    final isCtrl = HardwareKeyboard.instance.isControlPressed;
+    final isShift = HardwareKeyboard.instance.isShiftPressed;
+    final isTab = event.logicalKey == LogicalKeyboardKey.tab;
+
+    if (isTab && isCtrl) {
+      if (event is KeyDownEvent) {
+        final totalTabs = _tabController.length;
+        if (totalTabs <= 1) return true;
+
+        final currentIndex = _tabController.index;
+        int nextIndex;
+
+        if (isShift) {
+          // Previous tab (Left)
+          nextIndex = (currentIndex - 1 + totalTabs) % totalTabs;
+        } else {
+          // Next tab (Right)
+          nextIndex = (currentIndex + 1) % totalTabs;
+        }
+
+        _tabController.animateTo(nextIndex);
+      }
+      return true; // Handled
+    }
+    return false;
   }
 
   Future<void> _openLocalTerminal() async {
@@ -67,6 +102,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalStartKey);
     _tabController.dispose();
     super.dispose();
   }
@@ -115,22 +151,6 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
 
     return Actions(
       actions: {
-        NextTabIntent: CallbackAction<NextTabIntent>(
-          onInvoke: (_) {
-            final currentIndex = _tabController.index;
-            final nextIndex = (currentIndex + 1) % totalTabs;
-            _tabController.animateTo(nextIndex);
-            return null;
-          },
-        ),
-        PreviousTabIntent: CallbackAction<PreviousTabIntent>(
-          onInvoke: (_) {
-            final currentIndex = _tabController.index;
-            final prevIndex = (currentIndex - 1 + totalTabs) % totalTabs;
-            _tabController.animateTo(prevIndex);
-            return null;
-          },
-        ),
         NewTabIntent: CallbackAction<NewTabIntent>(
           onInvoke: (_) {
             _tabController.animateTo(0);
