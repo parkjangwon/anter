@@ -1,3 +1,4 @@
+import 'package:anter/src/features/terminal/presentation/widgets/file_viewer_screen.dart';
 import 'package:anter/src/features/terminal/data/sftp_service.dart';
 import 'package:flutter/material.dart';
 import 'package:dartssh2/dartssh2.dart';
@@ -164,6 +165,43 @@ class _SftpViewWidgetState extends State<SftpViewWidget> {
     }
   }
 
+  Future<void> _handleView(SftpName file) async {
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Opening file...')));
+      }
+
+      final remotePath = _currentPath.endsWith('/')
+          ? '$_currentPath${file.filename}'
+          : '$_currentPath/${file.filename}';
+
+      final content = await widget.service.readFile(remotePath);
+
+      if (mounted) {
+        // Clear snackbar
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                FileViewerScreen(filePath: file.filename, content: content),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to read file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleRename(SftpName file) async {
     final controller = TextEditingController(text: file.filename);
     final newName = await showDialog<String>(
@@ -304,6 +342,13 @@ class _SftpViewWidgetState extends State<SftpViewWidget> {
           onTap: () => _handleDuplicate(file),
         ),
         if (!file.attr.isDirectory) ...[
+          PopupMenuItem(
+            child: const ListTile(
+              title: Text('View'),
+              leading: Icon(Icons.visibility),
+            ),
+            onTap: () => _handleView(file),
+          ),
           PopupMenuItem(
             child: const ListTile(
               title: Text('Download'),

@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'dart:convert';
 import 'package:path/path.dart' as p;
+import 'package:charset_converter/charset_converter.dart';
 import 'package:dartssh2/dartssh2.dart';
 
 class SftpService {
@@ -251,6 +253,79 @@ class SftpService {
         }
         throw Exception('File copy failed: $e');
       }
+    }
+  }
+
+  Future<String> readFile(String path) async {
+    if (_sftp == null) throw Exception('Not connected');
+
+    final file = await _sftp!.open(path);
+    final content = <int>[];
+
+    try {
+      // Read entire file. For very large files, this might be memory intensive.
+      // But for a viewer, we usually load it all or chunk it.
+      // Given the requirement is "simple viewer", loading all is acceptable for reasonable sizes.
+      // We could limit size to avoid crash (e.g. 10MB).
+      final stat = await file.stat();
+      final size = stat.size ?? 0;
+      if (size > 10 * 1024 * 1024) {
+        throw Exception('File too large to view (limit 10MB)');
+      }
+
+      await for (final chunk in file.read()) {
+        content.addAll(chunk);
+      }
+    } finally {
+      await file.close();
+    }
+
+    // Detect encoding using remote 'file' command
+    String? charset;
+    try {
+      final escPath = path.replaceAll("'", "'\\''");
+      final result = await _client!.run("file -bi '$escPath'");
+      final output = String.fromCharCodes(result).trim();
+      // Output format example: text/plain; charset=utf-8
+      final match = RegExp(r'charset=([\w-]+)').firstMatch(output);
+      if (match != null) {
+        charset = match.group(1);
+      }
+    } catch (e) {
+      print('Failed to detect encoding: $e');
+    }
+
+    // Decode based on charset
+    try {
+      if (charset != null) {
+        final lowerCharset = charset.toLowerCase();
+        if (lowerCharset == 'utf-8' || lowerCharset == 'us-ascii') {
+          return utf8.decode(content);
+        } else if (lowerCharset == 'iso-8859-1' || lowerCharset == 'latin1') {
+          return latin1.decode(content);
+        } else if (lowerCharset == 'binary') {
+          return 'Binary file not supported for viewing';
+        }
+
+        // Use CharsetConverter for other encodings (e.g. euc-kr, cp949)
+        // Check if CharsetConverter is supported (it is a plugin)
+        try {
+          final decoded = await CharsetConverter.decode(
+            charset,
+            Uint8List.fromList(content),
+          );
+          return decoded;
+        } catch (e) {
+          print('CharsetConverter failed for $charset: $e');
+          // Fallback to utf8 if converter fails
+        }
+      }
+
+      // Default / Fallback
+      return utf8.decode(content);
+    } catch (_) {
+      // Final fallback
+      return latin1.decode(content);
     }
   }
 
