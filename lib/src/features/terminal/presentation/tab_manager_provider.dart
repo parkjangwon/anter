@@ -6,20 +6,25 @@ import '../../settings/presentation/settings_provider.dart';
 import '../../settings/domain/settings_state.dart';
 import '../data/ssh_service.dart';
 import '../data/local_terminal_service.dart';
+import '../data/sftp_service.dart';
+
+enum PaneType { terminal, sftp }
 
 /// Represents a single terminal pane within a tab
 class TerminalPane {
   final String id;
   final Session session;
-  final Terminal terminal;
-  final dynamic service; // SSHService or LocalTerminalService
+  final Terminal? terminal;
+  final PaneType type;
+  final dynamic service; // SSHService, LocalTerminalService, or SftpService
   final FocusNode focusNode;
   final double flex;
 
   TerminalPane({
     required this.id,
     required this.session,
-    required this.terminal,
+    this.terminal,
+    this.type = PaneType.terminal,
     required this.service,
     this.flex = 1.0,
   }) : focusNode = FocusNode();
@@ -29,6 +34,7 @@ class TerminalPane {
       id: id,
       session: session,
       terminal: terminal,
+      type: type,
       service: service,
       flex: flex ?? this.flex,
     );
@@ -123,6 +129,7 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
         session: session,
         terminal: terminal,
         service: service,
+        type: PaneType.terminal,
       );
 
       final tab = TerminalTab(
@@ -141,6 +148,49 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
     } catch (e) {
       print('TabManagerNotifier: Error creating tab: $e');
       // Terminal doesn't need explicit disposal
+      rethrow;
+    }
+  }
+
+  /// Create a new SFTP tab for a session
+  Future<void> createSftpTab(Session session) async {
+    print('TabManagerNotifier: createSftpTab called for ${session.host}');
+    final service = SftpService();
+
+    try {
+      print('TabManagerNotifier: Connecting SFTP...');
+      await service.connect(
+        host: session.host,
+        port: session.port,
+        username: session.username,
+        password: session.password,
+        privateKeyPath: session.privateKeyPath,
+        passphrase: session.passphrase,
+      );
+      print('TabManagerNotifier: SFTP connected');
+
+      final paneId = DateTime.now().millisecondsSinceEpoch.toString();
+      final pane = TerminalPane(
+        id: paneId,
+        session: session,
+        terminal: null,
+        service: service,
+        type: PaneType.sftp,
+      );
+
+      final tab = TerminalTab(
+        id: paneId,
+        panes: [pane],
+        activePaneId: paneId,
+        title: '${session.name} (SFTP)',
+      );
+
+      state = state.copyWith(
+        tabs: [...state.tabs, tab],
+        activeTabIndex: state.tabs.length,
+      );
+    } catch (e) {
+      print('TabManagerNotifier: Error creating SFTP tab: $e');
       rethrow;
     }
   }

@@ -14,6 +14,8 @@ import '../../terminal/presentation/widgets/debounced_layout_builder.dart';
 import '../../settings/domain/settings_state.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../settings/domain/shortcut_intents.dart';
+import '../../terminal/presentation/widgets/sftp_view_widget.dart';
+import '../../terminal/data/sftp_service.dart';
 
 class SessionListScreen extends ConsumerStatefulWidget {
   const SessionListScreen({super.key});
@@ -425,6 +427,26 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
     }
   }
 
+  void _handleSftpConnect(Session session) async {
+    if (_isSelectionMode) {
+      _toggleSelection(session.id);
+      return;
+    }
+    print('Connect SFTP to ${session.name}');
+    try {
+      await ref.read(tabManagerProvider.notifier).createSftpTab(session);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to connect SFTP: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _toggleSelection(int sessionId) {
     setState(() {
       if (_selectedSessionIds.contains(sessionId)) {
@@ -810,6 +832,22 @@ class _SessionListViewState extends ConsumerState<_SessionListView> {
                                             ),
                                             constraints: const BoxConstraints(),
                                           ),
+                                          if (session.host.toLowerCase() !=
+                                              'local')
+                                            IconButton(
+                                              icon: Icon(
+                                                Icons.folder_open,
+                                                size: isNarrow ? 18 : 24,
+                                              ),
+                                              tooltip: 'SFTP',
+                                              onPressed: () =>
+                                                  _handleSftpConnect(session),
+                                              padding: EdgeInsets.all(
+                                                isNarrow ? 4 : 8,
+                                              ),
+                                              constraints:
+                                                  const BoxConstraints(),
+                                            ),
                                           IconButton(
                                             icon: Icon(
                                               Icons.play_arrow,
@@ -933,9 +971,14 @@ class _TerminalTabView extends ConsumerWidget {
                     child: DebouncedLayoutBuilder(
                       delay: const Duration(milliseconds: 200),
                       builder: (context, size) {
+                        if (pane.type == PaneType.sftp) {
+                          return SftpViewWidget(
+                            service: pane.service as SftpService,
+                          );
+                        }
                         return TerminalViewWidget(
                           key: ValueKey(pane.id),
-                          terminal: pane.terminal,
+                          terminal: pane.terminal!,
                           focusNode: pane.focusNode,
                           onInput: (input) {
                             pane.service.write(input);
