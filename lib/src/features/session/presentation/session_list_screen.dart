@@ -19,6 +19,8 @@ import '../../settings/domain/shortcut_action.dart';
 import '../../terminal/presentation/widgets/sftp_view_widget.dart';
 import '../../terminal/data/sftp_service.dart';
 import '../../ai_assistant/data/ai_service.dart';
+import '../../terminal/data/ssh_service.dart';
+import '../../terminal/presentation/web_view_sheet.dart';
 
 class SessionListScreen extends ConsumerStatefulWidget {
   const SessionListScreen({super.key});
@@ -471,6 +473,19 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                               padding: EdgeInsets.all(isNarrow ? 8 : 12),
                               constraints: const BoxConstraints(),
                             ),
+                            // Smart Tunnel Button (only active tab)
+                            if (_tabController.index > 0)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.web,
+                                  size: isNarrow ? 18 : 20,
+                                  color: Colors.blueAccent,
+                                ),
+                                tooltip: 'Smart Tunnel & Web View',
+                                onPressed: _handleSmartTunnel,
+                                padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                constraints: const BoxConstraints(),
+                              ),
                             // Settings Button
                             IconButton(
                               icon: Icon(
@@ -774,6 +789,179 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
         );
       } catch (e) {
         // Ignore
+      }
+    }
+  }
+
+  void _handleSmartTunnel() {
+    if (_tabController.index == 0) {
+      return;
+    }
+
+    final tabIndex = _tabController.index - 1;
+    final tabManager = ref.read(tabManagerProvider);
+
+    if (tabIndex >= tabManager.tabs.length) return;
+
+    final activeTab = tabManager.tabs[tabIndex];
+    final activePane = activeTab.panes.firstWhere(
+      (p) => p.id == activeTab.activePaneId,
+      orElse: () => activeTab.panes.first,
+    );
+
+    if (activePane.session.host == 'local') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Smart Tunnel unavailable in local shell'),
+        ),
+      );
+      return;
+    }
+
+    if (activePane.service is! SSHService) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Smart Tunnel unavailable (Service not ready)'),
+        ),
+      );
+      return;
+    }
+
+    _showSmartTunnelMenu(activePane.session, activePane.service as SSHService);
+  }
+
+  void _showSmartTunnelMenu(Session session, SSHService sshService) {
+    final ports =
+        session.smartTunnelPorts
+            ?.split(',')
+            .where((e) => e.isNotEmpty)
+            .map((e) => int.tryParse(e))
+            .whereType<int>()
+            .toList() ??
+        [];
+
+    if (ports.isEmpty) {
+      _showCustomPortDialog(sshService);
+    } else {
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Smart Tunneling',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            ...ports.map(
+              (port) => ListTile(
+                title: Text('Forward Port $port'),
+                subtitle: Text('localhost:$port'),
+                leading: const Icon(Icons.lan),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startTunnelAndOpenWeb(port, sshService);
+                },
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              title: const Text('Custom Port'),
+              leading: const Icon(Icons.add),
+              onTap: () {
+                Navigator.pop(context);
+                _showCustomPortDialog(sshService);
+              },
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showCustomPortDialog(SSHService sshService) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Remote Port'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g. 8080',
+            labelText: 'Port',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              final port = int.tryParse(controller.text);
+              if (port != null) _startTunnelAndOpenWeb(port, sshService);
+            },
+            child: const Text('Connect'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startTunnelAndOpenWeb(
+    int remotePort,
+    SSHService sshService,
+  ) async {
+    int? localPort;
+    try {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Starting tunnel to port $remotePort...'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+
+      localPort = await sshService.startForwarding(remotePort: remotePort);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, controller) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: WebViewSheet(
+              url: 'http://localhost:$localPort',
+              onClose: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to tunnel: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (localPort != null) {
+        await sshService.stopForwarding(localPort);
       }
     }
   }

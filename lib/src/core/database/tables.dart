@@ -17,6 +17,8 @@ class Sessions extends Table {
   TextColumn get tag => text().nullable()();
   // 0: None, 1: Yellow (Caution), 2: Red (Danger)
   IntColumn get safetyLevel => integer().withDefault(const Constant(0))();
+  TextColumn get smartTunnelPorts =>
+      text().nullable()(); // Comma separated ports
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

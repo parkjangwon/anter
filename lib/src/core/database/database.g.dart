@@ -498,6 +498,17 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _smartTunnelPortsMeta = const VerificationMeta(
+    'smartTunnelPorts',
+  );
+  @override
+  late final GeneratedColumn<String> smartTunnelPorts = GeneratedColumn<String>(
+    'smart_tunnel_ports',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -537,6 +548,7 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     groupId,
     tag,
     safetyLevel,
+    smartTunnelPorts,
     createdAt,
     updatedAt,
   ];
@@ -645,6 +657,15 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('smart_tunnel_ports')) {
+      context.handle(
+        _smartTunnelPortsMeta,
+        smartTunnelPorts.isAcceptableOrUnknown(
+          data['smart_tunnel_ports']!,
+          _smartTunnelPortsMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -718,6 +739,10 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.int,
         data['${effectivePrefix}safety_level'],
       )!,
+      smartTunnelPorts: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}smart_tunnel_ports'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -749,6 +774,7 @@ class Session extends DataClass implements Insertable<Session> {
   final int? groupId;
   final String? tag;
   final int safetyLevel;
+  final String? smartTunnelPorts;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Session({
@@ -765,6 +791,7 @@ class Session extends DataClass implements Insertable<Session> {
     this.groupId,
     this.tag,
     required this.safetyLevel,
+    this.smartTunnelPorts,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -796,6 +823,9 @@ class Session extends DataClass implements Insertable<Session> {
       map['tag'] = Variable<String>(tag);
     }
     map['safety_level'] = Variable<int>(safetyLevel);
+    if (!nullToAbsent || smartTunnelPorts != null) {
+      map['smart_tunnel_ports'] = Variable<String>(smartTunnelPorts);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -826,6 +856,9 @@ class Session extends DataClass implements Insertable<Session> {
           : Value(groupId),
       tag: tag == null && nullToAbsent ? const Value.absent() : Value(tag),
       safetyLevel: Value(safetyLevel),
+      smartTunnelPorts: smartTunnelPorts == null && nullToAbsent
+          ? const Value.absent()
+          : Value(smartTunnelPorts),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -850,6 +883,7 @@ class Session extends DataClass implements Insertable<Session> {
       groupId: serializer.fromJson<int?>(json['groupId']),
       tag: serializer.fromJson<String?>(json['tag']),
       safetyLevel: serializer.fromJson<int>(json['safetyLevel']),
+      smartTunnelPorts: serializer.fromJson<String?>(json['smartTunnelPorts']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -871,6 +905,7 @@ class Session extends DataClass implements Insertable<Session> {
       'groupId': serializer.toJson<int?>(groupId),
       'tag': serializer.toJson<String?>(tag),
       'safetyLevel': serializer.toJson<int>(safetyLevel),
+      'smartTunnelPorts': serializer.toJson<String?>(smartTunnelPorts),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -890,6 +925,7 @@ class Session extends DataClass implements Insertable<Session> {
     Value<int?> groupId = const Value.absent(),
     Value<String?> tag = const Value.absent(),
     int? safetyLevel,
+    Value<String?> smartTunnelPorts = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -908,6 +944,9 @@ class Session extends DataClass implements Insertable<Session> {
     groupId: groupId.present ? groupId.value : this.groupId,
     tag: tag.present ? tag.value : this.tag,
     safetyLevel: safetyLevel ?? this.safetyLevel,
+    smartTunnelPorts: smartTunnelPorts.present
+        ? smartTunnelPorts.value
+        : this.smartTunnelPorts,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -936,6 +975,9 @@ class Session extends DataClass implements Insertable<Session> {
       safetyLevel: data.safetyLevel.present
           ? data.safetyLevel.value
           : this.safetyLevel,
+      smartTunnelPorts: data.smartTunnelPorts.present
+          ? data.smartTunnelPorts.value
+          : this.smartTunnelPorts,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -957,6 +999,7 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('groupId: $groupId, ')
           ..write('tag: $tag, ')
           ..write('safetyLevel: $safetyLevel, ')
+          ..write('smartTunnelPorts: $smartTunnelPorts, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -978,6 +1021,7 @@ class Session extends DataClass implements Insertable<Session> {
     groupId,
     tag,
     safetyLevel,
+    smartTunnelPorts,
     createdAt,
     updatedAt,
   );
@@ -998,6 +1042,7 @@ class Session extends DataClass implements Insertable<Session> {
           other.groupId == this.groupId &&
           other.tag == this.tag &&
           other.safetyLevel == this.safetyLevel &&
+          other.smartTunnelPorts == this.smartTunnelPorts &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1016,6 +1061,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<int?> groupId;
   final Value<String?> tag;
   final Value<int> safetyLevel;
+  final Value<String?> smartTunnelPorts;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SessionsCompanion({
@@ -1032,6 +1078,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.groupId = const Value.absent(),
     this.tag = const Value.absent(),
     this.safetyLevel = const Value.absent(),
+    this.smartTunnelPorts = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1049,6 +1096,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.groupId = const Value.absent(),
     this.tag = const Value.absent(),
     this.safetyLevel = const Value.absent(),
+    this.smartTunnelPorts = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -1068,6 +1116,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<int>? groupId,
     Expression<String>? tag,
     Expression<int>? safetyLevel,
+    Expression<String>? smartTunnelPorts,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1086,6 +1135,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (groupId != null) 'group_id': groupId,
       if (tag != null) 'tag': tag,
       if (safetyLevel != null) 'safety_level': safetyLevel,
+      if (smartTunnelPorts != null) 'smart_tunnel_ports': smartTunnelPorts,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1105,6 +1155,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<int?>? groupId,
     Value<String?>? tag,
     Value<int>? safetyLevel,
+    Value<String?>? smartTunnelPorts,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1122,6 +1173,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       groupId: groupId ?? this.groupId,
       tag: tag ?? this.tag,
       safetyLevel: safetyLevel ?? this.safetyLevel,
+      smartTunnelPorts: smartTunnelPorts ?? this.smartTunnelPorts,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1169,6 +1221,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (safetyLevel.present) {
       map['safety_level'] = Variable<int>(safetyLevel.value);
     }
+    if (smartTunnelPorts.present) {
+      map['smart_tunnel_ports'] = Variable<String>(smartTunnelPorts.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1194,6 +1249,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('groupId: $groupId, ')
           ..write('tag: $tag, ')
           ..write('safetyLevel: $safetyLevel, ')
+          ..write('smartTunnelPorts: $smartTunnelPorts, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1514,6 +1570,7 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<int?> groupId,
       Value<String?> tag,
       Value<int> safetyLevel,
+      Value<String?> smartTunnelPorts,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -1532,6 +1589,7 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<int?> groupId,
       Value<String?> tag,
       Value<int> safetyLevel,
+      Value<String?> smartTunnelPorts,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -1625,6 +1683,11 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<int> get safetyLevel => $composableBuilder(
     column: $table.safetyLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get smartTunnelPorts => $composableBuilder(
+    column: $table.smartTunnelPorts,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1731,6 +1794,11 @@ class $$SessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get smartTunnelPorts => $composableBuilder(
+    column: $table.smartTunnelPorts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1820,6 +1888,11 @@ class $$SessionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get smartTunnelPorts => $composableBuilder(
+    column: $table.smartTunnelPorts,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1891,6 +1964,7 @@ class $$SessionsTableTableManager
                 Value<int?> groupId = const Value.absent(),
                 Value<String?> tag = const Value.absent(),
                 Value<int> safetyLevel = const Value.absent(),
+                Value<String?> smartTunnelPorts = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion(
@@ -1907,6 +1981,7 @@ class $$SessionsTableTableManager
                 groupId: groupId,
                 tag: tag,
                 safetyLevel: safetyLevel,
+                smartTunnelPorts: smartTunnelPorts,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -1925,6 +2000,7 @@ class $$SessionsTableTableManager
                 Value<int?> groupId = const Value.absent(),
                 Value<String?> tag = const Value.absent(),
                 Value<int> safetyLevel = const Value.absent(),
+                Value<String?> smartTunnelPorts = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion.insert(
@@ -1941,6 +2017,7 @@ class $$SessionsTableTableManager
                 groupId: groupId,
                 tag: tag,
                 safetyLevel: safetyLevel,
+                smartTunnelPorts: smartTunnelPorts,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

@@ -12,6 +12,79 @@ import '../domain/script_step.dart';
 class SSHService {
   SSHClient? _client;
   String _encoding = 'utf-8';
+  final Map<int, ServerSocket> _activeForwards = {};
+
+  Future<int> startForwarding({required int remotePort, int? localPort}) async {
+    if (_client == null) throw Exception('SSH client is not connected');
+
+    try {
+      final server = await ServerSocket.bind(
+        InternetAddress.loopbackIPv4,
+        localPort ?? 0,
+      );
+      final actualLocalPort = server.port;
+
+      print(
+        'SSHService: Start forwarding local $actualLocalPort -> remote $remotePort',
+      );
+
+      server.listen((socket) async {
+        try {
+          final channel = await _client!.forwardLocal('localhost', remotePort);
+
+          // Pipe socket -> channel
+          socket.listen(
+            (data) {
+              // print('SSHService: Socket -> SSH (${data.length} bytes)');
+              // SSHChannel should enable adding data directly if it implements StreamSink
+              channel.sink.add(data);
+            },
+            onDone: () {
+              print('SSHService: Socket done');
+              channel.close();
+            },
+            onError: (e) {
+              print('SSHService: Socket error: $e');
+              socket.destroy();
+            },
+          );
+
+          // Pipe channel -> socket
+          channel.stream.listen(
+            (data) {
+              // print('SSHService: SSH -> Socket (${data.length} bytes)');
+              socket.add(data);
+            },
+            onDone: () {
+              print('SSHService: SSH Channel done');
+              socket.close();
+            },
+            onError: (e) {
+              print('SSHService: SSH Channel error: $e');
+              socket.destroy();
+            },
+          );
+        } catch (e) {
+          print('SSHService: Forwarding error: $e');
+          socket.destroy();
+        }
+      });
+
+      _activeForwards[actualLocalPort] = server;
+      return actualLocalPort;
+    } catch (e) {
+      print('SSHService: Failed to start forwarding: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> stopForwarding(int localPort) async {
+    final server = _activeForwards.remove(localPort);
+    if (server != null) {
+      await server.close();
+      print('SSHService: Stopped forwarding local $localPort');
+    }
+  }
 
   Future<void> connect({
     required String host,

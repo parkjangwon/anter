@@ -58,6 +58,7 @@ dependencies:
   flutter_highlight: ^0.7.0
   permission_handler: ^12.0.1
   google_generative_ai: ^0.4.7
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:

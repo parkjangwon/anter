@@ -4,8 +4,6 @@ import 'package:drift/drift.dart' as drift;
 import 'package:file_picker/file_picker.dart';
 import '../../../core/database/database.dart';
 import '../data/session_repository.dart';
-import '../../terminal/domain/script_step.dart';
-import 'widgets/script_step_editor.dart';
 
 class SessionEditorScreen extends ConsumerStatefulWidget {
   final Session? session;
@@ -26,6 +24,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passphraseController = TextEditingController();
+  final _smartTunnelPortsController = TextEditingController();
 
   String? _privateKeyPath;
   bool _usePemKey = false;
@@ -44,6 +43,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       _privateKeyPath = widget.session!.privateKeyPath;
       _passphraseController.text = widget.session!.passphrase ?? '';
       _safetyLevel = widget.session!.safetyLevel;
+      _smartTunnelPortsController.text = widget.session!.smartTunnelPorts ?? '';
 
       if (_privateKeyPath != null && _privateKeyPath!.isNotEmpty) {
         _usePemKey = true;
@@ -60,6 +60,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _passphraseController.dispose();
+    _smartTunnelPortsController.dispose();
     super.dispose();
   }
 
@@ -109,6 +110,11 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
               : null,
         ),
         safetyLevel: drift.Value(_safetyLevel),
+        smartTunnelPorts: drift.Value(
+          _smartTunnelPortsController.text.isEmpty
+              ? null
+              : _smartTunnelPortsController.text,
+        ),
       );
       await ref.read(sessionRepositoryProvider.notifier).upsert(session);
       if (mounted) {
@@ -234,6 +240,13 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 decoration: const InputDecoration(labelText: 'Username'),
                 validator: (value) =>
                     value?.isEmpty ?? true ? 'Please enter a username' : null,
+              ),
+              TextFormField(
+                controller: _smartTunnelPortsController,
+                decoration: const InputDecoration(
+                  labelText: 'Smart Tunnel Ports (comma separated)',
+                  hintText: 'e.g. 8080, 3000, 5000',
+                ),
               ),
               const SizedBox(height: 16),
               const Text(
