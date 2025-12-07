@@ -100,6 +100,7 @@ class BackupService {
             tag: drift.Value(session.tag),
             loginScript: drift.Value(session.loginScript),
             executeLoginScript: drift.Value(session.executeLoginScript),
+            safetyLevel: drift.Value(session.safetyLevel),
             createdAt: drift.Value(session.createdAt),
             updatedAt: drift.Value(session.updatedAt),
           );

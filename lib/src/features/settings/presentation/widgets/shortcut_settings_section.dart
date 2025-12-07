@@ -12,9 +12,13 @@ class ShortcutSettingsSection extends ConsumerWidget {
     final shortcuts = ref.watch(shortcutsProvider);
     final notifier = ref.read(shortcutsProvider.notifier);
 
-    // Group by category
+    // Group by category, excluding internal shortcuts
     final groupedShortcuts = <ShortcutCategory, List<ShortcutAction>>{};
     for (final action in ShortcutAction.values) {
+      if (action == ShortcutAction.nextTab ||
+          action == ShortcutAction.previousTab) {
+        continue;
+      }
       groupedShortcuts.putIfAbsent(action.category, () => []).add(action);
     }
 
