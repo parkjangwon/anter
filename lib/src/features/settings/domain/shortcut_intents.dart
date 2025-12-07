@@ -35,3 +35,7 @@ class ZoomOutIntent extends Intent {
 class ResetZoomIntent extends Intent {
   const ResetZoomIntent();
 }
+
+class BroadcastInputIntent extends Intent {
+  const BroadcastInputIntent();
+}

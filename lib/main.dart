@@ -120,6 +120,9 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
           case ShortcutAction.resetZoom:
             shortcutsMap[activator] = const ResetZoomIntent();
             break;
+          case ShortcutAction.broadcastInput:
+            shortcutsMap[activator] = const BroadcastInputIntent();
+            break;
         }
       }
     }

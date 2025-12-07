@@ -8,6 +8,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
 
 class SftpViewWidget extends StatefulWidget {
   final SftpService service;
@@ -105,26 +107,89 @@ class _SftpViewWidgetState extends State<SftpViewWidget> {
   Future<void> _handleDownload(SftpName file) async {
     try {
       String? savePath;
-      savePath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save ${file.filename}',
-        fileName: file.filename,
-      );
+
+      if (Platform.isAndroid || Platform.isIOS) {
+        // Mobile Implementation
+        Directory? dir;
+
+        // Android specific permission handling
+        if (Platform.isAndroid) {
+          // Check storage permission
+          var status = await Permission.storage.status;
+          if (!status.isGranted) {
+            status = await Permission.storage.request();
+          }
+
+          // On Android 13+, explicit storage permission might not be needed for public downloads
+          // if using specific APIs, but path_provider usually needs it or manages it.
+          // If denied, we falling back to app external storage which is always accessible.
+
+          if (status.isGranted) {
+            dir = await getDownloadsDirectory();
+          }
+
+          // Fallback to external storage if permissions issue or getDownloadsDirectory returns null
+          if (dir == null) {
+            dir = await getExternalStorageDirectory();
+          }
+
+          // Fallback to documents if all else fails
+          if (dir == null) {
+            dir = await getApplicationDocumentsDirectory();
+          }
+        } else {
+          // iOS
+          dir = await getApplicationDocumentsDirectory();
+        }
+
+        if (dir == null)
+          throw Exception('Could not determine download directory');
+
+        // Construct path
+        String localPath = p.join(dir.path, file.filename);
+
+        // Handle name collision
+        int counter = 1;
+        String baseName = p.basenameWithoutExtension(file.filename);
+        String ext = p.extension(file.filename);
+
+        while (await File(localPath).exists()) {
+          localPath = p.join(dir.path, '${baseName}_$counter$ext');
+          counter++;
+        }
+
+        savePath = localPath;
+      } else {
+        // Desktop: Use FilePicker
+        savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save ${file.filename}',
+          fileName: file.filename,
+        );
+      }
 
       if (savePath == null) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Downloading...')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Downloading...')));
+      }
 
-      // Handle simple concatenation for now
       final remotePath = _currentPath.endsWith('/')
           ? '$_currentPath${file.filename}'
           : '$_currentPath/${file.filename}';
+
       await widget.service.downloadFile(remotePath, savePath);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Download complete')));
+      if (mounted) {
+        // Show explicit path on mobile where it's less obvious
+        final msg = (Platform.isAndroid || Platform.isIOS)
+            ? 'Downloaded to ${p.basename(savePath)}'
+            : 'Download complete';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), duration: const Duration(seconds: 4)),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -145,14 +210,41 @@ class _SftpViewWidgetState extends State<SftpViewWidget> {
           ? '$_currentPath${file.filename}'
           : '$_currentPath/${file.filename}';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preparing file for share...')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Preparing file for share...')),
+        );
+      }
+
+      // Delete if exists to ensure fresh copy
+      final localFile = File(localPath);
+      if (await localFile.exists()) {
+        try {
+          await localFile.delete();
+        } catch (_) {
+          // Ignore delete failure (e.g. if locked), try overwriting
+        }
+      }
 
       await widget.service.downloadFile(remotePath, localPath);
 
+      // Verify file exists and has size
+      if (!await localFile.exists() || await localFile.length() == 0) {
+        throw Exception('File download failed or file is empty');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+
       // Use Share.shareXFiles (share_plus)
-      await Share.shareXFiles([XFile(localPath)]);
+      final result = await Share.shareXFiles([
+        XFile(localPath),
+      ], text: 'Shared from Anter');
+
+      if (result.status == ShareResultStatus.dismissed) {
+        // Optional: feedback
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

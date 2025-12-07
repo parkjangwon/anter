@@ -13,7 +13,9 @@ import '../../terminal/presentation/widgets/resizable_split_view.dart';
 import '../../terminal/presentation/widgets/debounced_layout_builder.dart';
 import '../../settings/domain/settings_state.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../settings/presentation/shortcuts_provider.dart';
 import '../../settings/domain/shortcut_intents.dart';
+import '../../settings/domain/shortcut_action.dart';
 import '../../terminal/presentation/widgets/sftp_view_widget.dart';
 import '../../terminal/data/sftp_service.dart';
 
@@ -27,6 +29,8 @@ class SessionListScreen extends ConsumerStatefulWidget {
 class _SessionListScreenState extends ConsumerState<SessionListScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  final _multiCommandController = TextEditingController();
+  bool _showMultiCommandInput = false;
 
   @override
   void initState() {
@@ -85,6 +89,19 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
       }
       return true; // Handled
     }
+
+    // Check for Broadcast Input shortcut
+    final shortcuts = ref.read(shortcutsProvider);
+    final broadcastActivators = shortcuts[ShortcutAction.broadcastInput] ?? [];
+    for (final activator in broadcastActivators) {
+      if (activator.accepts(event, HardwareKeyboard.instance)) {
+        setState(() {
+          _showMultiCommandInput = !_showMultiCommandInput;
+        });
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -106,6 +123,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalStartKey);
     _tabController.dispose();
+    _multiCommandController.dispose();
     super.dispose();
   }
 
@@ -174,6 +192,18 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
             Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            return null;
+          },
+        ),
+        BroadcastInputIntent: CallbackAction<BroadcastInputIntent>(
+          onInvoke: (_) {
+            setState(() {
+              _showMultiCommandInput = !_showMultiCommandInput;
+              if (_showMultiCommandInput) {
+                // Focus on the input field is handled by autofocus, but we might need to request focus manually if it was already shown?
+                // Actually, if we just toggled it to true, it will rebuild and autofocus.
+              }
+            });
             return null;
           },
         ),
@@ -328,6 +358,25 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                               padding: EdgeInsets.all(isNarrow ? 8 : 12),
                               constraints: const BoxConstraints(),
                             ),
+                          // Multi Command Toggle
+                          IconButton(
+                            icon: Icon(
+                              Icons.hub,
+                              size: isNarrow ? 18 : 20,
+                              color: _showMultiCommandInput
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            tooltip: 'Broadcast Command',
+                            onPressed: () {
+                              setState(() {
+                                _showMultiCommandInput =
+                                    !_showMultiCommandInput;
+                              });
+                            },
+                            padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                            constraints: const BoxConstraints(),
+                          ),
                           // Settings Button
                           IconButton(
                             icon: Icon(
@@ -367,6 +416,70 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                     )
                   : _SessionListView(),
             ),
+            // Multi Command Input
+            if (_showMultiCommandInput)
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.hub, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _multiCommandController,
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          hintText: 'Broadcast command to all sessions...',
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                        onSubmitted: (value) {
+                          if (value.isNotEmpty) {
+                            ref
+                                .read(tabManagerProvider.notifier)
+                                .sendDataToAllSessions('$value\r');
+                            _multiCommandController.clear();
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: () {
+                        final value = _multiCommandController.text;
+                        if (value.isNotEmpty) {
+                          ref
+                              .read(tabManagerProvider.notifier)
+                              .sendDataToAllSessions('$value\r');
+                          _multiCommandController.clear();
+                        }
+                      },
+                      tooltip: 'Send to all',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          _showMultiCommandInput = false;
+                        });
+                      },
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
           ],
         ), // Column
       ), // Scaffold

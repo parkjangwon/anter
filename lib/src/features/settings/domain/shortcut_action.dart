@@ -18,6 +18,11 @@ enum ShortcutAction {
   closeTab('Close Tab', 'close-tab', ShortcutCategory.application),
   nextTab('Next Tab', 'next-tab', ShortcutCategory.application),
   previousTab('Previous Tab', 'previous-tab', ShortcutCategory.application),
+  broadcastInput(
+    'Broadcast Input',
+    'broadcast-input',
+    ShortcutCategory.application,
+  ),
 
   // View
   zoomIn('Zoom In', 'zoom-in', ShortcutCategory.view),
@@ -87,6 +92,13 @@ enum ShortcutAction {
           LogicalKeyboardKey.digit0,
           meta: meta,
           control: control,
+        );
+      case ShortcutAction.broadcastInput:
+        return SingleActivator(
+          LogicalKeyboardKey.keyI,
+          meta: meta,
+          control: control,
+          shift: true,
         );
     }
   }

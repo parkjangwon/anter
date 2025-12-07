@@ -388,6 +388,21 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
       tab.dispose();
     }
   }
+
+  /// Send data to all active terminal sessions
+  void sendDataToAllSessions(String data) {
+    for (final tab in state.tabs) {
+      for (final pane in tab.panes) {
+        if (pane.type == PaneType.terminal && pane.terminal != null) {
+          try {
+            pane.terminal!.onOutput?.call(data);
+          } catch (e) {
+            print('Error sending data to session ${pane.session.name}: $e');
+          }
+        }
+      }
+    }
+  }
 }
 
 final tabManagerProvider =
