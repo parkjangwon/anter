@@ -21,6 +21,7 @@ import '../../terminal/data/sftp_service.dart';
 import '../../ai_assistant/data/ai_service.dart';
 import '../../terminal/data/ssh_service.dart';
 import '../../terminal/presentation/web_view_sheet.dart';
+import '../../session_recording/presentation/recording_list_screen.dart';
 
 class SessionListScreen extends ConsumerStatefulWidget {
   const SessionListScreen({super.key});
@@ -430,6 +431,25 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                                 padding: EdgeInsets.all(isNarrow ? 8 : 12),
                                 constraints: const BoxConstraints(),
                               ),
+                            // Recordings Button (only show on Sessions tab)
+                            if (_tabController.index == 0)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.movie,
+                                  size: isNarrow ? 18 : 20,
+                                ),
+                                tooltip: 'Recordings',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const RecordingListScreen(),
+                                    ),
+                                  );
+                                },
+                                padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                constraints: const BoxConstraints(),
+                              ),
                             // Multi Command Toggle
                             IconButton(
                               icon: Icon(
@@ -473,6 +493,41 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                               padding: EdgeInsets.all(isNarrow ? 8 : 12),
                               constraints: const BoxConstraints(),
                             ),
+                            // Recording Toggle
+                            if (_tabController.index > 0)
+                              Builder(
+                                builder: (context) {
+                                  final tabIndex = _tabController.index - 1;
+                                  if (tabIndex >= tabManager.tabs.length) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final tab = tabManager.tabs[tabIndex];
+                                  final pane = tab.panes.firstWhere(
+                                    (p) => p.id == tab.activePaneId,
+                                    orElse: () => tab.panes.first,
+                                  );
+                                  final isRecording =
+                                      pane.recorder?.isRecording ?? false;
+
+                                  return IconButton(
+                                    icon: Icon(
+                                      Icons.fiber_manual_record,
+                                      color: isRecording ? Colors.red : null,
+                                      size: isNarrow ? 18 : 20,
+                                    ),
+                                    tooltip: isRecording
+                                        ? 'Stop Recording'
+                                        : 'Start Recording',
+                                    onPressed: () {
+                                      ref
+                                          .read(tabManagerProvider.notifier)
+                                          .toggleRecording(tabIndex, pane.id);
+                                    },
+                                    padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                    constraints: const BoxConstraints(),
+                                  );
+                                },
+                              ),
                             // Smart Tunnel Button (only active tab)
                             if (_tabController.index > 0)
                               IconButton(

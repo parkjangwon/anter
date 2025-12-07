@@ -7,6 +7,8 @@ import '../../settings/domain/settings_state.dart';
 import '../data/ssh_service.dart';
 import '../data/local_terminal_service.dart';
 import '../data/sftp_service.dart';
+import '../../session_recording/domain/session_recorder.dart';
+import '../../session_recording/data/session_recording_repository.dart';
 
 enum PaneType { terminal, sftp }
 
@@ -19,6 +21,8 @@ class TerminalPane {
   final dynamic service; // SSHService, LocalTerminalService, or SftpService
   final FocusNode focusNode;
   final double flex;
+  final SessionRecorder? recorder;
+  final int? recordingId;
 
   TerminalPane({
     required this.id,
@@ -27,9 +31,15 @@ class TerminalPane {
     this.type = PaneType.terminal,
     required this.service,
     this.flex = 1.0,
+    this.recorder,
+    this.recordingId,
   }) : focusNode = FocusNode();
 
-  TerminalPane copyWith({double? flex}) {
+  TerminalPane copyWith({
+    double? flex,
+    SessionRecorder? recorder,
+    int? recordingId,
+  }) {
     return TerminalPane(
       id: id,
       session: session,
@@ -37,6 +47,8 @@ class TerminalPane {
       type: type,
       service: service,
       flex: flex ?? this.flex,
+      recorder: recorder ?? this.recorder,
+      recordingId: recordingId ?? this.recordingId,
     );
   }
 
@@ -98,6 +110,27 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
     final settings = ref.read(settingsProvider);
     final terminal = Terminal(maxLines: settings.scrollBufferSize);
     dynamic service;
+    SessionRecorder? recorder;
+    int? recordingId;
+
+    // Check auto-record setting
+    if (settings.autoRecordSessions) {
+      try {
+        recorder = SessionRecorder(sessionId: session.id);
+        await recorder.start();
+
+        // Create initial DB record
+        final repo = ref.read(sessionRecordingRepositoryProvider);
+        recordingId = await repo.create(
+          sessionId: session.id,
+          startTime: recorder.startTime ?? DateTime.now(),
+          filePath: recorder.filePath ?? '',
+        );
+      } catch (e) {
+        print('TabManagerNotifier: Error starting auto-recording: $e');
+        // Continue connection even if recording fails
+      }
+    }
 
     try {
       if (session.host.toLowerCase() == 'local') {
@@ -119,6 +152,7 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
           loginScript: session.loginScript,
           executeLoginScript: session.executeLoginScript,
           encoding: settings.terminalEncoding.charsetName,
+          recorder: recorder,
         );
         print('TabManagerNotifier: SSH connect returned');
       }
@@ -130,6 +164,8 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
         terminal: terminal,
         service: service,
         type: PaneType.terminal,
+        recorder: recorder,
+        recordingId: recordingId,
       );
 
       final tab = TerminalTab(
@@ -203,10 +239,31 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
   }
 
   /// Close a tab
-  void closeTab(int index) {
+  Future<void> closeTab(int index) async {
     if (index < 0 || index >= state.tabs.length) return;
 
     final tab = state.tabs[index];
+
+    // Stop and save recordings for all panes
+    for (final pane in tab.panes) {
+      if (pane.recorder != null && pane.recorder!.isRecording) {
+        try {
+          final file = await pane.recorder!.stop();
+          if (file != null && pane.recordingId != null) {
+            final repo = ref.read(sessionRecordingRepositoryProvider);
+            final length = await file.length();
+            await repo.updateEndTimeAndSize(
+              pane.recordingId!,
+              DateTime.now(),
+              length,
+            );
+          }
+        } catch (e) {
+          print('Error stopping recording: $e');
+        }
+      }
+    }
+
     tab.dispose();
 
     final newTabs = List<TerminalTab>.from(state.tabs)..removeAt(index);
@@ -382,9 +439,126 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
     state = state.copyWith(tabs: newTabs);
   }
 
-  void cleanupTabs() {
-    // Clean up all tabs
+  Future<void> toggleRecording(int tabIndex, String paneId) async {
+    if (tabIndex < 0 || tabIndex >= state.tabs.length) return;
+
+    final tab = state.tabs[tabIndex];
+    final paneIndex = tab.panes.indexWhere((p) => p.id == paneId);
+    if (paneIndex == -1) return;
+
+    final pane = tab.panes[paneIndex];
+    final isRecording = pane.recorder?.isRecording ?? false;
+
+    TerminalPane newPane;
+
+    if (isRecording) {
+      // Stop recording
+      try {
+        final file = await pane.recorder!.stop();
+        if (file != null && pane.recordingId != null) {
+          final repo = ref.read(sessionRecordingRepositoryProvider);
+          final length = await file.length();
+          await repo.updateEndTimeAndSize(
+            pane.recordingId!,
+            DateTime.now(),
+            length,
+          );
+        }
+      } catch (e) {
+        print('Error stopping recording: $e');
+      }
+
+      // Detach recorder from service
+      if (pane.service is SSHService) {
+        (pane.service as SSHService).setRecorder(null);
+      } else if (pane.service is LocalTerminalService) {
+        (pane.service as LocalTerminalService).setRecorder(null);
+      }
+
+      newPane = TerminalPane(
+        id: pane.id,
+        session: pane.session,
+        terminal: pane.terminal,
+        type: pane.type,
+        service: pane.service,
+        flex: pane.flex,
+        recorder: null,
+        recordingId: null,
+      );
+    } else {
+      // Start recording
+      try {
+        final recorder = SessionRecorder(sessionId: pane.session.id);
+        await recorder.start();
+
+        final repo = ref.read(sessionRecordingRepositoryProvider);
+        final recordingId = await repo.create(
+          sessionId: pane.session.id,
+          startTime: recorder.startTime ?? DateTime.now(),
+          filePath: recorder.filePath ?? '',
+        );
+
+        // Attach recorder to service
+        if (pane.service is SSHService) {
+          (pane.service as SSHService).setRecorder(recorder);
+        } else if (pane.service is LocalTerminalService) {
+          (pane.service as LocalTerminalService).setRecorder(recorder);
+        }
+
+        newPane = TerminalPane(
+          id: pane.id,
+          session: pane.session,
+          terminal: pane.terminal,
+          type: pane.type,
+          service: pane.service,
+          flex: pane.flex,
+          recorder: recorder,
+          recordingId: recordingId,
+        );
+      } catch (e) {
+        print('Error starting recording: $e');
+        return;
+      }
+    }
+
+    // Update state
+    final newPanes = List<TerminalPane>.from(tab.panes);
+    newPanes[paneIndex] = newPane;
+
+    final updatedTab = TerminalTab(
+      id: tab.id,
+      panes: newPanes,
+      activePaneId: tab.activePaneId,
+      title: tab.title,
+    );
+
+    final newTabs = List<TerminalTab>.from(state.tabs);
+    newTabs[tabIndex] = updatedTab;
+
+    state = state.copyWith(tabs: newTabs);
+  }
+
+  Future<void> cleanupTabs() async {
+    // Stop recording and clean up all tabs
     for (final tab in state.tabs) {
+      for (final pane in tab.panes) {
+        if (pane.recorder != null && pane.recorder!.isRecording) {
+          try {
+            final file = await pane.recorder!.stop();
+            if (file != null && pane.recordingId != null) {
+              final repo = ref.read(sessionRecordingRepositoryProvider);
+              final length = await file.length();
+              await repo.updateEndTimeAndSize(
+                pane.recordingId!,
+                DateTime.now(),
+                length,
+              );
+            }
+          } catch (e) {
+            print('Error stopping recording in cleanup: $e');
+          }
+        }
+      }
       tab.dispose();
     }
   }

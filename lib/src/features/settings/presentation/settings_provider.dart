@@ -104,6 +104,11 @@ class SettingsNotifier extends Notifier<SettingsState> {
     await _saveSettings();
   }
 
+  Future<void> setAutoRecordSessions(bool value) async {
+    state = state.copyWith(autoRecordSessions: value);
+    await _saveSettings();
+  }
+
   Future<void> setBellStyle(dynamic style) async {
     // Deprecated
   }

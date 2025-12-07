@@ -4,8 +4,15 @@ import 'dart:io';
 import 'package:flutter_pty/flutter_pty.dart';
 import 'package:xterm/xterm.dart';
 
+import '../../session_recording/domain/session_recorder.dart';
+
 class LocalTerminalService {
   Pty? _pty;
+  SessionRecorder? _recorder;
+
+  void setRecorder(SessionRecorder? recorder) {
+    _recorder = recorder;
+  }
 
   Future<void> start(Terminal terminal) async {
     try {
@@ -19,7 +26,9 @@ class LocalTerminalService {
 
       // Pipe pty output to terminal
       _pty!.output.listen((data) {
-        terminal.write(utf8.decode(data));
+        final decoded = utf8.decode(data);
+        terminal.write(decoded);
+        _recorder?.write(decoded);
       });
 
       // Pipe terminal input to pty

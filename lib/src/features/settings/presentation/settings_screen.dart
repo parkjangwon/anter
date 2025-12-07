@@ -272,6 +272,13 @@ class _SettingsContent extends ConsumerWidget {
               settings.autoReconnect,
               (value) => notifier.setAutoReconnect(value),
             ),
+          if (_matchesSearch('auto record'))
+            _buildSwitchSetting(
+              'Auto Record Sessions',
+              'Automatically record all session outputs for replay',
+              settings.autoRecordSessions,
+              (value) => notifier.setAutoRecordSessions(value),
+            ),
           if (_matchesSearch('startup mode'))
             Builder(
               builder: (context) {

@@ -11,12 +11,12 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Sessions, Groups])
+@DriftDatabase(tables: [Sessions, Groups, SessionRecordings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -38,6 +38,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 5) {
           // Add smartTunnelPorts column
           await migrator.addColumn(sessions, sessions.smartTunnelPorts);
+        }
+        if (from < 6) {
+          // Add SessionRecordings table
+          await migrator.createTable(sessionRecordings);
         }
       },
     );

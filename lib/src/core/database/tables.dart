@@ -30,3 +30,13 @@ class Groups extends Table {
   TextColumn get icon => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
+
+class SessionRecordings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get sessionId => integer().references(Sessions, #id)();
+  DateTimeColumn get startTime => dateTime()();
+  DateTimeColumn get endTime => dateTime().nullable()();
+  TextColumn get filePath => text()(); // Path to the recording file
+  IntColumn get fileSize => integer().withDefault(const Constant(0))();
+  TextColumn get name => text().withLength(min: 1, max: 100).nullable()();
+}

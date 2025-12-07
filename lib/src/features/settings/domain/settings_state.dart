@@ -23,6 +23,9 @@ class SettingsState {
   final String geminiApiKey;
   final GeminiModel geminiModel;
 
+  // Recording Settings
+  final bool autoRecordSessions;
+
   const SettingsState({
     // Terminal defaults
     this.fontSize = 14.0,
@@ -44,6 +47,9 @@ class SettingsState {
     this.enableAiAssistant = false,
     this.geminiApiKey = '',
     this.geminiModel = GeminiModel.geminiFlashLite,
+
+    // Recording defaults
+    this.autoRecordSessions = false,
   });
 
   SettingsState copyWith({
@@ -60,6 +66,7 @@ class SettingsState {
     bool? enableAiAssistant,
     String? geminiApiKey,
     GeminiModel? geminiModel,
+    bool? autoRecordSessions,
   }) {
     return SettingsState(
       fontSize: fontSize ?? this.fontSize,
@@ -75,6 +82,7 @@ class SettingsState {
       enableAiAssistant: enableAiAssistant ?? this.enableAiAssistant,
       geminiApiKey: geminiApiKey ?? this.geminiApiKey,
       geminiModel: geminiModel ?? this.geminiModel,
+      autoRecordSessions: autoRecordSessions ?? this.autoRecordSessions,
     );
   }
 
@@ -93,6 +101,7 @@ class SettingsState {
       'enableAiAssistant': enableAiAssistant,
       'geminiApiKey': geminiApiKey,
       'geminiModel': geminiModel.name,
+      'autoRecordSessions': autoRecordSessions,
     };
   }
 
@@ -126,6 +135,7 @@ class SettingsState {
         (e) => e.name == json['geminiModel'],
         orElse: () => GeminiModel.geminiFlashLite,
       ),
+      autoRecordSessions: json['autoRecordSessions'] as bool? ?? false,
     );
   }
 }

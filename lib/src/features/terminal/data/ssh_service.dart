@@ -8,6 +8,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:xterm/xterm.dart';
 import 'package:charset_converter/charset_converter.dart';
 import '../domain/script_step.dart';
+import '../../session_recording/domain/session_recorder.dart';
 
 class SSHService {
   SSHClient? _client;
@@ -86,6 +87,12 @@ class SSHService {
     }
   }
 
+  SessionRecorder? _recorder;
+
+  void setRecorder(SessionRecorder? recorder) {
+    _recorder = recorder;
+  }
+
   Future<void> connect({
     required String host,
     required int port,
@@ -96,9 +103,12 @@ class SSHService {
     required Terminal terminal,
     String? loginScript,
     bool executeLoginScript = false,
+    SessionRecorder? recorder,
     String encoding = 'utf-8',
   }) async {
     _encoding = encoding;
+    if (recorder != null) _recorder = recorder;
+
     print(
       'SSHService: connect called for $host:$port with encoding $_encoding',
     );
@@ -139,11 +149,15 @@ class SSHService {
 
       // Pipe stdout/stderr to terminal with encoding conversion
       session.stdout.listen((data) async {
-        terminal.write(await _decodeWithEncoding(data));
+        final decoded = await _decodeWithEncoding(data);
+        terminal.write(decoded);
+        _recorder?.write(decoded);
       });
 
       session.stderr.listen((data) async {
-        terminal.write(await _decodeWithEncoding(data));
+        final decoded = await _decodeWithEncoding(data);
+        terminal.write(decoded);
+        _recorder?.write(decoded);
       });
 
       // Pipe terminal input to stdin with encoding conversion
