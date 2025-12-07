@@ -339,53 +339,94 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                                       ],
                                     ),
                                   ),
-                                  ...tabManager.tabs.map(
-                                    (tab) => Tab(
+                                  ...tabManager.tabs.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final index = entry.key;
+                                    final tab = entry.value;
+                                    return Tab(
                                       height: 40,
-                                      child: SizedBox(
-                                        width: isNarrow ? 100 : 120,
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                tab.title,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: isNarrow ? 11 : 12,
-                                                ),
-                                              ),
+                                      child: LongPressDraggable<int>(
+                                        data: index,
+                                        delay: const Duration(
+                                          milliseconds: 150,
+                                        ),
+                                        feedback: Material(
+                                          elevation: 4.0,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          color: Theme.of(context).cardColor,
+                                          child: Container(
+                                            height: 40,
+                                            width: isNarrow ? 100 : 120,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
                                             ),
-                                            SizedBox(width: isNarrow ? 2 : 4),
-                                            InkWell(
-                                              onTap: () {
-                                                ref
-                                                    .read(
-                                                      tabManagerProvider
-                                                          .notifier,
-                                                    )
-                                                    .closeTab(
-                                                      tabManager.tabs.indexOf(
-                                                        tab,
-                                                      ),
-                                                    );
-                                              },
+                                            alignment: Alignment.centerLeft,
+                                            decoration: BoxDecoration(
                                               borderRadius:
-                                                  BorderRadius.circular(12),
-                                              child: Padding(
-                                                padding: EdgeInsets.all(
-                                                  isNarrow ? 1.0 : 2.0,
-                                                ),
-                                                child: Icon(
-                                                  Icons.close,
-                                                  size: isNarrow ? 12 : 14,
-                                                ),
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Theme.of(
+                                                  context,
+                                                ).dividerColor,
                                               ),
                                             ),
-                                          ],
+                                            child: Text(
+                                              tab.title,
+                                              style: TextStyle(
+                                                fontSize: isNarrow ? 11 : 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                        child: SizedBox(
+                                          width: isNarrow ? 100 : 120,
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  tab.title,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: isNarrow
+                                                        ? 11
+                                                        : 12,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: isNarrow ? 2 : 4),
+                                              InkWell(
+                                                onTap: () {
+                                                  ref
+                                                      .read(
+                                                        tabManagerProvider
+                                                            .notifier,
+                                                      )
+                                                      .closeTab(index);
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(
+                                                    isNarrow ? 1.0 : 2.0,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.close,
+                                                    size: isNarrow ? 12 : 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  }),
                                 ],
                               ),
                             ),
