@@ -25,6 +25,10 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   final _portController = TextEditingController(text: '22');
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passphraseController = TextEditingController();
+
+  String? _privateKeyPath;
+  bool _usePemKey = false;
   int _safetyLevel = 0;
 
   @override
@@ -37,7 +41,13 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       _portController.text = widget.session!.port.toString();
       _usernameController.text = widget.session!.username;
       _passwordController.text = widget.session!.password ?? '';
+      _privateKeyPath = widget.session!.privateKeyPath;
+      _passphraseController.text = widget.session!.passphrase ?? '';
       _safetyLevel = widget.session!.safetyLevel;
+
+      if (_privateKeyPath != null && _privateKeyPath!.isNotEmpty) {
+        _usePemKey = true;
+      }
     }
   }
 
@@ -49,11 +59,33 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
     _portController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _passphraseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPrivateKey() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      setState(() {
+        _privateKeyPath = result.files.single.path;
+      });
+    }
   }
 
   void _saveSession() async {
     if (_formKey.currentState!.validate()) {
+      // Validate that at least one auth method is provided
+      if (_usePemKey) {
+        if (_privateKeyPath == null || _privateKeyPath!.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a private key file')),
+          );
+          return;
+        }
+      }
+      // Password validation is optional (could be empty password)
+
       final session = SessionsCompanion(
         id: widget.session == null
             ? const drift.Value.absent()
@@ -66,7 +98,15 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
         port: drift.Value(int.parse(_portController.text)),
         username: drift.Value(_usernameController.text),
         password: drift.Value(
-          _passwordController.text.isEmpty ? null : _passwordController.text,
+          !_usePemKey && _passwordController.text.isNotEmpty
+              ? _passwordController.text
+              : null,
+        ),
+        privateKeyPath: drift.Value(_usePemKey ? _privateKeyPath : null),
+        passphrase: drift.Value(
+          _usePemKey && _passphraseController.text.isNotEmpty
+              ? _passphraseController.text
+              : null,
         ),
         safetyLevel: drift.Value(_safetyLevel),
       );
@@ -195,11 +235,88 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 validator: (value) =>
                     value?.isEmpty ?? true ? 'Please enter a username' : null,
               ),
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
+              const SizedBox(height: 16),
+              const Text(
+                'Authentication',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      title: const Text('Password'),
+                      value: false,
+                      groupValue: _usePemKey,
+                      onChanged: (value) {
+                        setState(() {
+                          _usePemKey = value!;
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      title: const Text('Private Key'),
+                      value: true,
+                      groupValue: _usePemKey,
+                      onChanged: (value) {
+                        setState(() {
+                          _usePemKey = value!;
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+              if (!_usePemKey)
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                )
+              else ...[
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: _pickPrivateKey,
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Private Key Path',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.folder_open),
+                    ),
+                    child: Text(
+                      _privateKeyPath ?? 'Select a file...',
+                      style: TextStyle(
+                        color: _privateKeyPath == null ? Colors.grey : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                if (_privateKeyPath == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 12),
+                    child: Text(
+                      'Required',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _passphraseController,
+                  decoration: const InputDecoration(
+                    labelText: 'Passphrase (Optional)',
+                    helperText: 'Leave empty if the key is not encrypted',
+                  ),
+                  obscureText: true,
+                ),
+              ],
             ],
           ),
         ),
