@@ -486,6 +486,18 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _safetyLevelMeta = const VerificationMeta(
+    'safetyLevel',
+  );
+  @override
+  late final GeneratedColumn<int> safetyLevel = GeneratedColumn<int>(
+    'safety_level',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -524,6 +536,7 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     executeLoginScript,
     groupId,
     tag,
+    safetyLevel,
     createdAt,
     updatedAt,
   ];
@@ -623,6 +636,15 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         tag.isAcceptableOrUnknown(data['tag']!, _tagMeta),
       );
     }
+    if (data.containsKey('safety_level')) {
+      context.handle(
+        _safetyLevelMeta,
+        safetyLevel.isAcceptableOrUnknown(
+          data['safety_level']!,
+          _safetyLevelMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -692,6 +714,10 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.string,
         data['${effectivePrefix}tag'],
       ),
+      safetyLevel: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}safety_level'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -722,6 +748,7 @@ class Session extends DataClass implements Insertable<Session> {
   final bool executeLoginScript;
   final int? groupId;
   final String? tag;
+  final int safetyLevel;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Session({
@@ -737,6 +764,7 @@ class Session extends DataClass implements Insertable<Session> {
     required this.executeLoginScript,
     this.groupId,
     this.tag,
+    required this.safetyLevel,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -767,6 +795,7 @@ class Session extends DataClass implements Insertable<Session> {
     if (!nullToAbsent || tag != null) {
       map['tag'] = Variable<String>(tag);
     }
+    map['safety_level'] = Variable<int>(safetyLevel);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -796,6 +825,7 @@ class Session extends DataClass implements Insertable<Session> {
           ? const Value.absent()
           : Value(groupId),
       tag: tag == null && nullToAbsent ? const Value.absent() : Value(tag),
+      safetyLevel: Value(safetyLevel),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -819,6 +849,7 @@ class Session extends DataClass implements Insertable<Session> {
       executeLoginScript: serializer.fromJson<bool>(json['executeLoginScript']),
       groupId: serializer.fromJson<int?>(json['groupId']),
       tag: serializer.fromJson<String?>(json['tag']),
+      safetyLevel: serializer.fromJson<int>(json['safetyLevel']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -839,6 +870,7 @@ class Session extends DataClass implements Insertable<Session> {
       'executeLoginScript': serializer.toJson<bool>(executeLoginScript),
       'groupId': serializer.toJson<int?>(groupId),
       'tag': serializer.toJson<String?>(tag),
+      'safetyLevel': serializer.toJson<int>(safetyLevel),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -857,6 +889,7 @@ class Session extends DataClass implements Insertable<Session> {
     bool? executeLoginScript,
     Value<int?> groupId = const Value.absent(),
     Value<String?> tag = const Value.absent(),
+    int? safetyLevel,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -874,6 +907,7 @@ class Session extends DataClass implements Insertable<Session> {
     executeLoginScript: executeLoginScript ?? this.executeLoginScript,
     groupId: groupId.present ? groupId.value : this.groupId,
     tag: tag.present ? tag.value : this.tag,
+    safetyLevel: safetyLevel ?? this.safetyLevel,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -899,6 +933,9 @@ class Session extends DataClass implements Insertable<Session> {
           : this.executeLoginScript,
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       tag: data.tag.present ? data.tag.value : this.tag,
+      safetyLevel: data.safetyLevel.present
+          ? data.safetyLevel.value
+          : this.safetyLevel,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -919,6 +956,7 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('executeLoginScript: $executeLoginScript, ')
           ..write('groupId: $groupId, ')
           ..write('tag: $tag, ')
+          ..write('safetyLevel: $safetyLevel, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -939,6 +977,7 @@ class Session extends DataClass implements Insertable<Session> {
     executeLoginScript,
     groupId,
     tag,
+    safetyLevel,
     createdAt,
     updatedAt,
   );
@@ -958,6 +997,7 @@ class Session extends DataClass implements Insertable<Session> {
           other.executeLoginScript == this.executeLoginScript &&
           other.groupId == this.groupId &&
           other.tag == this.tag &&
+          other.safetyLevel == this.safetyLevel &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -975,6 +1015,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<bool> executeLoginScript;
   final Value<int?> groupId;
   final Value<String?> tag;
+  final Value<int> safetyLevel;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SessionsCompanion({
@@ -990,6 +1031,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.executeLoginScript = const Value.absent(),
     this.groupId = const Value.absent(),
     this.tag = const Value.absent(),
+    this.safetyLevel = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1006,6 +1048,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.executeLoginScript = const Value.absent(),
     this.groupId = const Value.absent(),
     this.tag = const Value.absent(),
+    this.safetyLevel = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -1024,6 +1067,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<bool>? executeLoginScript,
     Expression<int>? groupId,
     Expression<String>? tag,
+    Expression<int>? safetyLevel,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1041,6 +1085,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
         'execute_login_script': executeLoginScript,
       if (groupId != null) 'group_id': groupId,
       if (tag != null) 'tag': tag,
+      if (safetyLevel != null) 'safety_level': safetyLevel,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1059,6 +1104,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<bool>? executeLoginScript,
     Value<int?>? groupId,
     Value<String?>? tag,
+    Value<int>? safetyLevel,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1075,6 +1121,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       executeLoginScript: executeLoginScript ?? this.executeLoginScript,
       groupId: groupId ?? this.groupId,
       tag: tag ?? this.tag,
+      safetyLevel: safetyLevel ?? this.safetyLevel,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1119,6 +1166,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (tag.present) {
       map['tag'] = Variable<String>(tag.value);
     }
+    if (safetyLevel.present) {
+      map['safety_level'] = Variable<int>(safetyLevel.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1143,6 +1193,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('executeLoginScript: $executeLoginScript, ')
           ..write('groupId: $groupId, ')
           ..write('tag: $tag, ')
+          ..write('safetyLevel: $safetyLevel, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1462,6 +1513,7 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<bool> executeLoginScript,
       Value<int?> groupId,
       Value<String?> tag,
+      Value<int> safetyLevel,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -1479,6 +1531,7 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<bool> executeLoginScript,
       Value<int?> groupId,
       Value<String?> tag,
+      Value<int> safetyLevel,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -1567,6 +1620,11 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<String> get tag => $composableBuilder(
     column: $table.tag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get safetyLevel => $composableBuilder(
+    column: $table.safetyLevel,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1668,6 +1726,11 @@ class $$SessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get safetyLevel => $composableBuilder(
+    column: $table.safetyLevel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1752,6 +1815,11 @@ class $$SessionsTableAnnotationComposer
   GeneratedColumn<String> get tag =>
       $composableBuilder(column: $table.tag, builder: (column) => column);
 
+  GeneratedColumn<int> get safetyLevel => $composableBuilder(
+    column: $table.safetyLevel,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1822,6 +1890,7 @@ class $$SessionsTableTableManager
                 Value<bool> executeLoginScript = const Value.absent(),
                 Value<int?> groupId = const Value.absent(),
                 Value<String?> tag = const Value.absent(),
+                Value<int> safetyLevel = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion(
@@ -1837,6 +1906,7 @@ class $$SessionsTableTableManager
                 executeLoginScript: executeLoginScript,
                 groupId: groupId,
                 tag: tag,
+                safetyLevel: safetyLevel,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -1854,6 +1924,7 @@ class $$SessionsTableTableManager
                 Value<bool> executeLoginScript = const Value.absent(),
                 Value<int?> groupId = const Value.absent(),
                 Value<String?> tag = const Value.absent(),
+                Value<int> safetyLevel = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion.insert(
@@ -1869,6 +1940,7 @@ class $$SessionsTableTableManager
                 executeLoginScript: executeLoginScript,
                 groupId: groupId,
                 tag: tag,
+                safetyLevel: safetyLevel,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

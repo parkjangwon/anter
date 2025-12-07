@@ -15,6 +15,8 @@ class Sessions extends Table {
       boolean().withDefault(const Constant(false))();
   IntColumn get groupId => integer().nullable().references(Groups, #id)();
   TextColumn get tag => text().nullable()();
+  // 0: None, 1: Yellow (Caution), 2: Red (Danger)
+  IntColumn get safetyLevel => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

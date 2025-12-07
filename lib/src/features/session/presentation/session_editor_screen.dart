@@ -25,6 +25,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   final _portController = TextEditingController(text: '22');
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  int _safetyLevel = 0;
 
   @override
   void initState() {
@@ -36,6 +37,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       _portController.text = widget.session!.port.toString();
       _usernameController.text = widget.session!.username;
       _passwordController.text = widget.session!.password ?? '';
+      _safetyLevel = widget.session!.safetyLevel;
     }
   }
 
@@ -66,6 +68,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
         password: drift.Value(
           _passwordController.text.isEmpty ? null : _passwordController.text,
         ),
+        safetyLevel: drift.Value(_safetyLevel),
       );
       await ref.read(sessionRepositoryProvider.notifier).upsert(session);
       if (mounted) {
@@ -118,6 +121,54 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 controller: _tagController,
                 decoration: const InputDecoration(labelText: 'Tag'),
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                value: _safetyLevel,
+                decoration: const InputDecoration(
+                  labelText: 'Production Guard (Safety Level)',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 0,
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text('None (Safe)'),
+                      ],
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 1,
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text('Caution (Yellow)'),
+                      ],
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 2,
+                    child: Row(
+                      children: [
+                        Icon(Icons.dangerous, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Production (Red)'),
+                      ],
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _safetyLevel = value;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _hostController,
                 decoration: const InputDecoration(labelText: 'Host'),

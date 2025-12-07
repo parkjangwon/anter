@@ -137,6 +137,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
       executeLoginScript: false,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      safetyLevel: 0,
     );
     await ref.read(tabManagerProvider.notifier).createTab(session);
   }
@@ -1384,9 +1385,7 @@ class _TerminalTabView extends ConsumerWidget {
                           key: ValueKey(pane.id),
                           terminal: pane.terminal!,
                           focusNode: pane.focusNode,
-                          onInput: (input) {
-                            pane.service.write(input);
-                          },
+                          safetyLevel: pane.session.safetyLevel,
                         );
                       },
                     ),

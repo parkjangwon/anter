@@ -16,7 +16,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -30,6 +30,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 3) {
           // Add tag column
           await migrator.addColumn(sessions, sessions.tag);
+        }
+        if (from < 4) {
+          // Add safetyLevel column
+          await migrator.addColumn(sessions, sessions.safetyLevel);
         }
       },
     );
