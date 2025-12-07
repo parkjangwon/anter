@@ -18,6 +18,11 @@ class SettingsState {
   final bool autoReconnect;
   final StartupMode startupMode;
 
+  // AI Settings
+  final bool enableAiAssistant;
+  final String geminiApiKey;
+  final GeminiModel geminiModel;
+
   const SettingsState({
     // Terminal defaults
     this.fontSize = 14.0,
@@ -34,6 +39,11 @@ class SettingsState {
     this.confirmOnExit = true,
     this.autoReconnect = false,
     this.startupMode = StartupMode.sessionList,
+
+    // AI defaults
+    this.enableAiAssistant = false,
+    this.geminiApiKey = '',
+    this.geminiModel = GeminiModel.geminiFlashLite,
   });
 
   SettingsState copyWith({
@@ -47,6 +57,9 @@ class SettingsState {
     bool? confirmOnExit,
     bool? autoReconnect,
     StartupMode? startupMode,
+    bool? enableAiAssistant,
+    String? geminiApiKey,
+    GeminiModel? geminiModel,
   }) {
     return SettingsState(
       fontSize: fontSize ?? this.fontSize,
@@ -59,6 +72,9 @@ class SettingsState {
       confirmOnExit: confirmOnExit ?? this.confirmOnExit,
       autoReconnect: autoReconnect ?? this.autoReconnect,
       startupMode: startupMode ?? this.startupMode,
+      enableAiAssistant: enableAiAssistant ?? this.enableAiAssistant,
+      geminiApiKey: geminiApiKey ?? this.geminiApiKey,
+      geminiModel: geminiModel ?? this.geminiModel,
     );
   }
 
@@ -74,6 +90,9 @@ class SettingsState {
       'confirmOnExit': confirmOnExit,
       'autoReconnect': autoReconnect,
       'startupMode': startupMode.name,
+      'enableAiAssistant': enableAiAssistant,
+      'geminiApiKey': geminiApiKey,
+      'geminiModel': geminiModel.name,
     };
   }
 
@@ -101,11 +120,43 @@ class SettingsState {
         (e) => e.name == json['startupMode'],
         orElse: () => StartupMode.sessionList,
       ),
+      enableAiAssistant: json['enableAiAssistant'] as bool? ?? false,
+      geminiApiKey: json['geminiApiKey'] as String? ?? '',
+      geminiModel: GeminiModel.values.firstWhere(
+        (e) => e.name == json['geminiModel'],
+        orElse: () => GeminiModel.geminiFlashLite,
+      ),
     );
   }
 }
 
 enum StartupMode { sessionList, localTerminal }
+
+enum GeminiModel { geminiPro, geminiFlash, geminiFlashLite }
+
+extension GeminiModelExtension on GeminiModel {
+  String get displayName {
+    switch (this) {
+      case GeminiModel.geminiPro:
+        return 'Gemini 2.5 Pro';
+      case GeminiModel.geminiFlash:
+        return 'Gemini 2.5 Flash';
+      case GeminiModel.geminiFlashLite:
+        return 'Gemini 2.5 Flash Lite';
+    }
+  }
+
+  String get modelId {
+    switch (this) {
+      case GeminiModel.geminiPro:
+        return 'gemini-2.5-pro';
+      case GeminiModel.geminiFlash:
+        return 'gemini-2.5-flash';
+      case GeminiModel.geminiFlashLite:
+        return 'gemini-2.5-flash-lite';
+    }
+  }
+}
 
 enum TerminalEncoding { utf8, eucKr, shiftJis, iso88591, gb2312, big5 }
 

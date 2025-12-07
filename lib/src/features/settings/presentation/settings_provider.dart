@@ -88,6 +88,22 @@ class SettingsNotifier extends Notifier<SettingsState> {
     await _saveSettings();
   }
 
+  // AI Settings
+  Future<void> setEnableAiAssistant(bool value) async {
+    state = state.copyWith(enableAiAssistant: value);
+    await _saveSettings();
+  }
+
+  Future<void> setGeminiApiKey(String value) async {
+    state = state.copyWith(geminiApiKey: value);
+    await _saveSettings();
+  }
+
+  Future<void> setGeminiModel(GeminiModel value) async {
+    state = state.copyWith(geminiModel: value);
+    await _saveSettings();
+  }
+
   Future<void> setBellStyle(dynamic style) async {
     // Deprecated
   }

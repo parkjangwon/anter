@@ -39,3 +39,7 @@ class ResetZoomIntent extends Intent {
 class BroadcastInputIntent extends Intent {
   const BroadcastInputIntent();
 }
+
+class AiAssistantIntent extends Intent {
+  const AiAssistantIntent();
+}

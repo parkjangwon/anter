@@ -301,6 +301,42 @@ class _SettingsContent extends ConsumerWidget {
       );
     }
 
+    // AI Assistant Section
+    if (_matchesSearch('ai') ||
+        _matchesSearch('assistant') ||
+        _matchesSearch('gemini') ||
+        _matchesSearch('model')) {
+      sections.add(
+        _buildSection(context, 'AI Assistant', Icons.auto_awesome, [
+          _buildSwitchSetting(
+            'Enable Gemini Assistant',
+            'Use Google Gemini AI to generate Linux commands',
+            settings.enableAiAssistant,
+            (value) {
+              notifier.setEnableAiAssistant(value);
+            },
+          ),
+          if (settings.enableAiAssistant) ...[
+            const Divider(),
+            _buildTextFieldSetting(
+              'Gemini API Key',
+              settings.geminiApiKey,
+              (value) => notifier.setGeminiApiKey(value),
+              obscureText: true,
+              hintText: 'Enter your Gemini API Key',
+            ),
+            const SizedBox(height: 8),
+            _buildDropdownSetting<GeminiModel>(
+              'Gemini Model',
+              settings.geminiModel,
+              GeminiModel.values.map((e) => (e, e.displayName)).toList(),
+              (value) => notifier.setGeminiModel(value),
+            ),
+          ],
+        ]),
+      );
+    }
+
     // Shortcuts Section
     if (_matchesSearch('shortcut') ||
         _matchesSearch('keyboard') ||
@@ -587,6 +623,40 @@ class _SettingsContent extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTextFieldSetting(
+    String title,
+    String value,
+    void Function(String) onChanged, {
+    bool obscureText = false,
+    String? hintText,
+  }) {
+    // Note: Recreating controller on every build is not ideal for typing,
+    // but acceptable for settings where updates are infrequent/pasted.
+    // For a better experience, we would need a stateful widget.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: TextEditingController(text: value)
+              ..selection = TextSelection.collapsed(offset: value.length),
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              hintText: hintText,
+              isDense: true,
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 

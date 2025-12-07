@@ -23,6 +23,7 @@ enum ShortcutAction {
     'broadcast-input',
     ShortcutCategory.application,
   ),
+  aiAssistant('AI Assistant', 'ai-assistant', ShortcutCategory.application),
 
   // View
   zoomIn('Zoom In', 'zoom-in', ShortcutCategory.view),
@@ -96,6 +97,13 @@ enum ShortcutAction {
       case ShortcutAction.broadcastInput:
         return SingleActivator(
           LogicalKeyboardKey.keyI,
+          meta: meta,
+          control: control,
+          shift: true,
+        );
+      case ShortcutAction.aiAssistant:
+        return SingleActivator(
+          LogicalKeyboardKey.keyA,
           meta: meta,
           control: control,
           shift: true,

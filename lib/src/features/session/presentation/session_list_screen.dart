@@ -18,6 +18,7 @@ import '../../settings/domain/shortcut_intents.dart';
 import '../../settings/domain/shortcut_action.dart';
 import '../../terminal/presentation/widgets/sftp_view_widget.dart';
 import '../../terminal/data/sftp_service.dart';
+import '../../ai_assistant/data/ai_service.dart';
 
 class SessionListScreen extends ConsumerStatefulWidget {
   const SessionListScreen({super.key});
@@ -31,6 +32,13 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
   late TabController _tabController;
   final _multiCommandController = TextEditingController();
   bool _showMultiCommandInput = false;
+
+  // AI Assistant State
+  final _aiQueryController = TextEditingController();
+  final _aiResponseController = TextEditingController();
+  bool _showAiAssistant = false;
+  bool _isAiLoading = false;
+  String? _aiError;
 
   @override
   void initState() {
@@ -102,6 +110,20 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
       }
     }
 
+    // Check for AI Assistant shortcut
+    final aiActivators = shortcuts[ShortcutAction.aiAssistant] ?? [];
+    for (final activator in aiActivators) {
+      if (activator.accepts(event, HardwareKeyboard.instance)) {
+        setState(() {
+          _showAiAssistant = !_showAiAssistant;
+          if (_showAiAssistant) {
+            _showMultiCommandInput = false;
+          }
+        });
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -119,11 +141,50 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
     await ref.read(tabManagerProvider.notifier).createTab(session);
   }
 
+  Future<void> _sendAiQuery(String query) async {
+    final settings = ref.read(settingsProvider);
+    if (!settings.enableAiAssistant || settings.geminiApiKey.isEmpty) {
+      setState(() {
+        _aiError = 'Please enable AI Assistant and set API Key in Settings.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isAiLoading = true;
+      _aiError = null;
+      _aiResponseController.clear();
+    });
+
+    try {
+      final command = await AiService.generateCommand(
+        settings.geminiApiKey,
+        settings.geminiModel.modelId,
+        query,
+      );
+      if (mounted) {
+        setState(() {
+          _aiResponseController.text = command;
+          _isAiLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _aiError = e.toString().replaceAll('Exception: ', '');
+          _isAiLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalStartKey);
     _tabController.dispose();
     _multiCommandController.dispose();
+    _aiQueryController.dispose();
+    _aiResponseController.dispose();
     super.dispose();
   }
 
@@ -200,252 +261,297 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
             setState(() {
               _showMultiCommandInput = !_showMultiCommandInput;
               if (_showMultiCommandInput) {
-                // Focus on the input field is handled by autofocus, but we might need to request focus manually if it was already shown?
-                // Actually, if we just toggled it to true, it will rebuild and autofocus.
+                _showAiAssistant = false;
+              }
+            });
+            return null;
+          },
+        ),
+        AiAssistantIntent: CallbackAction<AiAssistantIntent>(
+          onInvoke: (_) {
+            setState(() {
+              _showAiAssistant = !_showAiAssistant;
+              if (_showAiAssistant) {
+                _showMultiCommandInput = false;
               }
             });
             return null;
           },
         ),
       },
-      child: Scaffold(
-        body: Column(
-          children: [
-            if (isMacOS) const SizedBox(height: 28),
-            // Custom Top Bar
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 600;
-                  return GestureDetector(
-                    onTap: () {
-                      // Unfocus any focused terminal to allow global shortcuts to work
-                      FocusScope.of(context).requestFocus(FocusNode());
-                    },
-                    child: Container(
-                      height: 40,
-                      color: Theme.of(context).colorScheme.surface,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TabBar(
-                              controller: _tabController,
-                              isScrollable: true,
-                              tabAlignment: TabAlignment.start,
-                              dividerColor: Colors.transparent,
-                              labelPadding: EdgeInsets.symmetric(
-                                horizontal: isNarrow ? 8 : 16,
-                              ),
-                              tabs: [
-                                Tab(
-                                  height: 40,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.list,
-                                        size: isNarrow ? 14 : 16,
-                                      ),
-                                      SizedBox(width: isNarrow ? 4 : 8),
-                                      Text(
-                                        'Sessions',
-                                        style: TextStyle(
-                                          fontSize: isNarrow ? 12 : 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+      child: PopScope(
+        canPop: !_showAiAssistant && !_showMultiCommandInput,
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          setState(() {
+            _showAiAssistant = false;
+            _showMultiCommandInput = false;
+          });
+        },
+        child: Scaffold(
+          body: Column(
+            children: [
+              if (isMacOS) const SizedBox(height: 28),
+              // Custom Top Bar
+              SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 600;
+                    return GestureDetector(
+                      onTap: () {
+                        // Unfocus any focused terminal to allow global shortcuts to work
+                        FocusScope.of(context).requestFocus(FocusNode());
+                      },
+                      child: Container(
+                        height: 40,
+                        color: Theme.of(context).colorScheme.surface,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TabBar(
+                                controller: _tabController,
+                                isScrollable: true,
+                                tabAlignment: TabAlignment.start,
+                                dividerColor: Colors.transparent,
+                                labelPadding: EdgeInsets.symmetric(
+                                  horizontal: isNarrow ? 8 : 16,
                                 ),
-                                ...tabManager.tabs.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final tab = entry.value;
-                                  final tabContent = SizedBox(
-                                    width: isNarrow ? 100 : 120,
+                                tabs: [
+                                  Tab(
+                                    height: 40,
                                     child: Row(
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            tab.title,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: isNarrow ? 11 : 12,
-                                            ),
-                                          ),
+                                        Icon(
+                                          Icons.list,
+                                          size: isNarrow ? 14 : 16,
                                         ),
-                                        SizedBox(width: isNarrow ? 2 : 4),
-                                        InkWell(
-                                          onTap: () {
-                                            ref
-                                                .read(
-                                                  tabManagerProvider.notifier,
-                                                )
-                                                .closeTab(index);
-                                          },
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          child: Padding(
-                                            padding: EdgeInsets.all(
-                                              isNarrow ? 1.0 : 2.0,
-                                            ),
-                                            child: Icon(
-                                              Icons.close,
-                                              size: isNarrow ? 12 : 14,
-                                            ),
+                                        SizedBox(width: isNarrow ? 4 : 8),
+                                        Text(
+                                          'Sessions',
+                                          style: TextStyle(
+                                            fontSize: isNarrow ? 12 : 14,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  );
-
-                                  return Draggable<int>(
-                                    data: index,
-                                    feedback: Material(
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: isNarrow ? 120 : 150,
-                                          maxHeight: 40,
-                                        ),
-                                        child: Tab(
-                                          height: 40,
-                                          child: tabContent,
+                                  ),
+                                  ...tabManager.tabs.map(
+                                    (tab) => Tab(
+                                      height: 40,
+                                      child: SizedBox(
+                                        width: isNarrow ? 100 : 120,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                tab.title,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: isNarrow ? 11 : 12,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: isNarrow ? 2 : 4),
+                                            InkWell(
+                                              onTap: () {
+                                                ref
+                                                    .read(
+                                                      tabManagerProvider
+                                                          .notifier,
+                                                    )
+                                                    .closeTab(
+                                                      tabManager.tabs.indexOf(
+                                                        tab,
+                                                      ),
+                                                    );
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: Padding(
+                                                padding: EdgeInsets.all(
+                                                  isNarrow ? 1.0 : 2.0,
+                                                ),
+                                                child: Icon(
+                                                  Icons.close,
+                                                  size: isNarrow ? 12 : 14,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
-                                    child: Tab(height: 40, child: tabContent),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                          // Local Terminal Button (desktop only)
-                          if (_tabController.index == 0)
-                            Builder(
-                              builder: (context) {
-                                final platform = Theme.of(context).platform;
-                                final isMobile =
-                                    platform == TargetPlatform.android ||
-                                    platform == TargetPlatform.iOS;
-
-                                // Hide local terminal button on mobile
-                                if (isMobile) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                return IconButton(
-                                  icon: Icon(
-                                    Icons.terminal,
-                                    size: isNarrow ? 18 : 20,
                                   ),
-                                  tooltip: 'Open Local Terminal',
-                                  onPressed: _openLocalTerminal,
-                                  padding: EdgeInsets.all(isNarrow ? 8 : 12),
-                                  constraints: const BoxConstraints(),
-                                );
-                              },
+                                ],
+                              ),
                             ),
-                          // + Button (only show on Sessions tab)
-                          if (_tabController.index == 0)
+                            // Local Terminal Button (desktop only)
+                            if (_tabController.index == 0)
+                              Builder(
+                                builder: (context) {
+                                  final platform = Theme.of(context).platform;
+                                  final isMobile =
+                                      platform == TargetPlatform.android ||
+                                      platform == TargetPlatform.iOS;
+
+                                  // Hide local terminal button on mobile
+                                  if (isMobile) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return IconButton(
+                                    icon: Icon(
+                                      Icons.terminal,
+                                      size: isNarrow ? 18 : 20,
+                                    ),
+                                    tooltip: 'Open Local Terminal',
+                                    onPressed: _openLocalTerminal,
+                                    padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                    constraints: const BoxConstraints(),
+                                  );
+                                },
+                              ),
+                            // + Button (only show on Sessions tab)
+                            if (_tabController.index == 0)
+                              IconButton(
+                                icon: Icon(Icons.add, size: isNarrow ? 18 : 20),
+                                tooltip: 'New Session',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const SessionEditorScreen(),
+                                    ),
+                                  );
+                                },
+                                padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                                constraints: const BoxConstraints(),
+                              ),
+                            // Multi Command Toggle
                             IconButton(
-                              icon: Icon(Icons.add, size: isNarrow ? 18 : 20),
-                              tooltip: 'New Session',
+                              icon: Icon(
+                                Icons.hub,
+                                size: isNarrow ? 18 : 20,
+                                color: _showMultiCommandInput
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              tooltip: 'Broadcast Command',
+                              onPressed: () {
+                                setState(() {
+                                  _showMultiCommandInput =
+                                      !_showMultiCommandInput;
+                                  if (_showMultiCommandInput) {
+                                    _showAiAssistant = false;
+                                  }
+                                });
+                              },
+                              padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                              constraints: const BoxConstraints(),
+                            ),
+                            // AI Assistant Toggle
+                            IconButton(
+                              icon: Icon(
+                                Icons.auto_awesome,
+                                size: isNarrow ? 18 : 20,
+                                color: _showAiAssistant
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              tooltip: 'AI Assistant',
+                              onPressed: () {
+                                setState(() {
+                                  _showAiAssistant = !_showAiAssistant;
+                                  if (_showAiAssistant) {
+                                    _showMultiCommandInput = false;
+                                  }
+                                });
+                              },
+                              padding: EdgeInsets.all(isNarrow ? 8 : 12),
+                              constraints: const BoxConstraints(),
+                            ),
+                            // Settings Button
+                            IconButton(
+                              icon: Icon(
+                                Icons.settings,
+                                size: isNarrow ? 18 : 20,
+                              ),
+                              tooltip: 'Settings',
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) => const SessionEditorScreen(),
+                                    builder: (_) => const SettingsScreen(),
                                   ),
                                 );
                               },
                               padding: EdgeInsets.all(isNarrow ? 8 : 12),
                               constraints: const BoxConstraints(),
                             ),
-                          // Multi Command Toggle
-                          IconButton(
-                            icon: Icon(
-                              Icons.hub,
-                              size: isNarrow ? 18 : 20,
-                              color: _showMultiCommandInput
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
-                            ),
-                            tooltip: 'Broadcast Command',
-                            onPressed: () {
-                              setState(() {
-                                _showMultiCommandInput =
-                                    !_showMultiCommandInput;
-                              });
-                            },
-                            padding: EdgeInsets.all(isNarrow ? 8 : 12),
-                            constraints: const BoxConstraints(),
-                          ),
-                          // Settings Button
-                          IconButton(
-                            icon: Icon(
-                              Icons.settings,
-                              size: isNarrow ? 18 : 20,
-                            ),
-                            tooltip: 'Settings',
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
-                            },
-                            padding: EdgeInsets.all(isNarrow ? 8 : 12),
-                            constraints: const BoxConstraints(),
-                          ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Content
+              Expanded(
+                child: (totalTabs > 1 && isControllerValid)
+                    ? TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _SessionListView(),
+                          ...tabManager.tabs.map((tab) {
+                            return _TerminalTabView(tab: tab);
+                          }),
                         ],
+                      )
+                    : _SessionListView(),
+              ),
+              // Multi Command Input
+              if (_showMultiCommandInput)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    border: Border(
+                      top: BorderSide(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Content
-            Expanded(
-              child: (totalTabs > 1 && isControllerValid)
-                  ? TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _SessionListView(),
-                        ...tabManager.tabs.map((tab) {
-                          return _TerminalTabView(tab: tab);
-                        }),
-                      ],
-                    )
-                  : _SessionListView(),
-            ),
-            // Multi Command Input
-            if (_showMultiCommandInput)
-              Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainer,
-                  border: Border(
-                    top: BorderSide(
-                      color: Theme.of(context).dividerColor,
-                      width: 1,
-                    ),
                   ),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.hub, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _multiCommandController,
-                        autofocus: true,
-                        decoration: const InputDecoration(
-                          hintText: 'Broadcast command to all sessions...',
-                          border: InputBorder.none,
-                          isDense: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.hub, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _multiCommandController,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Broadcast command to all sessions...',
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                          onSubmitted: (value) {
+                            if (value.isNotEmpty) {
+                              ref
+                                  .read(tabManagerProvider.notifier)
+                                  .sendDataToAllSessions('$value\r');
+                              _multiCommandController.clear();
+                            }
+                          },
                         ),
-                        onSubmitted: (value) {
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: () {
+                          final value = _multiCommandController.text;
                           if (value.isNotEmpty) {
                             ref
                                 .read(tabManagerProvider.notifier)
@@ -453,38 +559,223 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
                             _multiCommandController.clear();
                           }
                         },
+                        tooltip: 'Send to all',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            _showMultiCommandInput = false;
+                          });
+                        },
+                        tooltip: 'Close',
+                      ),
+                    ],
+                  ),
+                ),
+              // AI Assistant Input
+              if (_showAiAssistant)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    border: Border(
+                      top: BorderSide(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.send),
-                      onPressed: () {
-                        final value = _multiCommandController.text;
-                        if (value.isNotEmpty) {
-                          ref
-                              .read(tabManagerProvider.notifier)
-                              .sendDataToAllSessions('$value\r');
-                          _multiCommandController.clear();
-                        }
-                      },
-                      tooltip: 'Send to all',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        setState(() {
-                          _showMultiCommandInput = false;
-                        });
-                      },
-                      tooltip: 'Close',
-                    ),
-                  ],
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _aiQueryController,
+                              autofocus: true,
+                              enabled: !_isAiLoading,
+                              decoration: InputDecoration(
+                                hintText: 'Ask for a Linux command...',
+                                border: InputBorder.none,
+                                isDense: true,
+                                suffixIcon: _aiQueryController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        onPressed: () {
+                                          _aiQueryController.clear();
+                                          setState(() {});
+                                        },
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      )
+                                    : null,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (value) async {
+                                if (value.isNotEmpty && !_isAiLoading) {
+                                  await _sendAiQuery(value);
+                                }
+                              },
+                            ),
+                          ),
+                          if (_isAiLoading)
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            IconButton(
+                              icon: const Icon(Icons.send),
+                              onPressed: () async {
+                                final value = _aiQueryController.text;
+                                if (value.isNotEmpty && !_isAiLoading) {
+                                  await _sendAiQuery(value);
+                                }
+                              },
+                              tooltip: 'Ask AI',
+                            ),
+                        ],
+                      ),
+                      if (_aiError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 16,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _aiError!,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (_aiResponseController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context).dividerColor,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SelectableText(
+                                    _aiResponseController.text,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 16),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(
+                                        text: _aiResponseController.text,
+                                      ),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Command copied to clipboard',
+                                        ),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  tooltip: 'Copy Command',
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.keyboard_return,
+                                    size: 16,
+                                  ),
+                                  onPressed: () {
+                                    _insertCommandToActiveTerminal(
+                                      _aiResponseController.text,
+                                    );
+                                  },
+                                  tooltip: 'Apply to Terminal',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ), // Column
-      ), // Scaffold
+            ],
+          ), // Column
+        ), // Scaffold
+      ), // PopScope
     ); // Actions
   } // build method
+
+  void _insertCommandToActiveTerminal(String command) {
+    if (_tabController.index == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a terminal tab to apply command.'),
+        ),
+      );
+      return;
+    }
+
+    final tabIndex = _tabController.index - 1;
+    final tabManager = ref.read(tabManagerProvider);
+
+    if (tabIndex >= tabManager.tabs.length) return;
+
+    final activeTab = tabManager.tabs[tabIndex];
+    final activePane = activeTab.panes.firstWhere(
+      (p) => p.id == activeTab.activePaneId,
+      orElse: () => activeTab.panes.first,
+    );
+
+    if (activePane.terminal != null) {
+      if (activePane.type == PaneType.sftp) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cannot send command to SFTP view.')),
+        );
+        return;
+      }
+
+      try {
+        activePane.terminal!.onOutput?.call(command);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Command inserted into terminal'),
+            duration: Duration(milliseconds: 1000),
+          ),
+        );
+      } catch (e) {
+        // Ignore
+      }
+    }
+  }
 } // _SessionListScreenState
 
 class _SessionListView extends ConsumerStatefulWidget {

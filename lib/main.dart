@@ -123,6 +123,9 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
           case ShortcutAction.broadcastInput:
             shortcutsMap[activator] = const BroadcastInputIntent();
             break;
+          case ShortcutAction.aiAssistant:
+            shortcutsMap[activator] = const AiAssistantIntent();
+            break;
         }
       }
     }
