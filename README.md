@@ -2,7 +2,7 @@
 
 Anter is a modern, cross-platform SSH client built with Flutter, designed for developers and system administrators who need a robust, efficient, and intelligent terminal experience. It combines a beautiful UI with powerful features like session recording, AI-powered command assistance, and smart backup capabilities.
 
-![Anter Header](https://raw.githubusercontent.com/parkjw/anter/main/assets/readme_header.png)
+![Anter Logo](assets/images/anter_logo.png)
 
 ## Key Features 🚀
 

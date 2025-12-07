@@ -2,7 +2,7 @@
 
 Anter는 개발자와 시스템 관리자를 위해 설계된 현대적인 크로스 플랫폼 SSH 클라이언트입니다. Flutter로 제작되어 아름다운 UI와 함께 세션 녹화, AI 명령어 보조, 스마트 백업 등 강력한 기능을 제공합니다.
 
-![Anter Header](https://raw.githubusercontent.com/parkjw/anter/main/assets/readme_header.png)
+![Anter Logo](assets/images/anter_logo.png)
 
 ## 주요 기능 🚀
 
