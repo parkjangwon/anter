@@ -35,7 +35,6 @@ class NotificationService {
         );
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-    print('NotificationService initialized');
   }
 
   Future<void> requestPermissions() async {

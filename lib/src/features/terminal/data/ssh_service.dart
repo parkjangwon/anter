@@ -13,6 +13,47 @@ import '../domain/script_step.dart';
 import '../../session_recording/domain/session_recorder.dart';
 import '../../../core/services/notification_service.dart';
 
+class KeywordMatcher {
+  final List<({String original, String? simple, RegExp? regex})> _patterns = [];
+
+  KeywordMatcher(String? jsonKeywords) {
+    if (jsonKeywords == null) return;
+    try {
+      final List<dynamic> list = jsonDecode(jsonKeywords);
+      for (final k in list) {
+        if (k is! String) continue;
+        if (k.startsWith('r:')) {
+          try {
+            _patterns.add((
+              original: k,
+              simple: null,
+              regex: RegExp(k.substring(2)),
+            ));
+          } catch (e) {
+            // Invalid regex, ignore safely
+          }
+        } else {
+          _patterns.add((original: k, simple: k, regex: null));
+        }
+      }
+    } catch (e) {
+      // JSON parse error, ignore safely
+    }
+  }
+
+  List<String> check(String text) {
+    final matches = <String>[];
+    for (final p in _patterns) {
+      if (p.simple != null) {
+        if (text.contains(p.simple!)) matches.add(p.original);
+      } else if (p.regex != null) {
+        if (p.regex!.hasMatch(text)) matches.add(p.original);
+      }
+    }
+    return matches;
+  }
+}
+
 class SSHService {
   final List<SSHClient> _clients = [];
   String _encoding = 'utf-8';
@@ -187,6 +228,10 @@ class SSHService {
 
       terminal.buffer.clear();
 
+      final keywordMatcher = KeywordMatcher(
+        targetSessionData.notificationKeywords,
+      );
+
       // Pipe stdout/stderr to terminal with encoding conversion
       shell.stdout.listen((data) async {
         final decoded = await _decodeWithEncoding(data);
@@ -194,9 +239,9 @@ class SSHService {
         _recorder?.write(decoded);
 
         // Keyword monitoring
-        if (targetSessionData.notificationKeywords != null) {
-          // print('DEBUG: Checking keywords for chunk: "${decoded.replaceAll('\n', '\\n')}"');
-          _checkKeywords(decoded, targetSessionData);
+        final matches = keywordMatcher.check(decoded);
+        for (final match in matches) {
+          _triggerNotification(targetSessionData, match);
         }
       });
 
@@ -388,66 +433,20 @@ class SSHService {
     }
   }
 
-  void _checkKeywords(String text, Session session) {
-    if (session.notificationKeywords == null) return;
-
-    try {
-      final List<dynamic> keywordsInfo = jsonDecode(
-        session.notificationKeywords!,
-      );
-      // print('DEBUG: Loaded keys: $keywordsInfo');
-
-      for (final keyword in keywordsInfo) {
-        if (keyword is! String) continue;
-
-        bool matched = false;
-
-        if (keyword.startsWith('r:')) {
-          // Regex match
-          try {
-            final pattern = keyword.substring(2);
-            final regex = RegExp(pattern);
-            if (regex.hasMatch(text)) {
-              print('DEBUG: Regex matched: $pattern');
-              matched = true;
-            }
-          } catch (e) {
-            print('Invalid regex keyword: $keyword');
-          }
-        } else {
-          // Simple string match
-          if (text.contains(keyword)) {
-            print('DEBUG: String matched: $keyword');
-            matched = true;
-          }
-        }
-
-        if (matched) {
-          _triggerNotification(session, keyword);
-        }
-      }
-    } catch (e) {
-      print('Error checking keywords: $e');
-    }
-  }
-
   void _triggerNotification(Session session, String keyword) {
-    print('DEBUG: Triggering notification for $keyword');
     final now = DateTime.now();
-    final lastTime = _lastNotificationTime[keyword];
+    final debounceKey = '${session.id}_$keyword';
+    final lastTime = _lastNotificationTime[debounceKey];
 
     if (lastTime == null || now.difference(lastTime) > _notificationCooldown) {
-      _lastNotificationTime[keyword] = now;
+      _lastNotificationTime[debounceKey] = now;
 
-      print('DEBUG: Notification cooldown passed. Showing notification.');
       NotificationService().showNotification(
-        id: session.id + keyword.hashCode, // Unique ID per session+keyword
+        id: session.id + keyword.hashCode,
         title: 'Keyword Detect: ${session.name}',
         body: 'Found "$keyword" in terminal output.',
         payload: session.id.toString(),
       );
-    } else {
-      print('DEBUG: Notification skipped due to cooldown.');
     }
   }
 }
