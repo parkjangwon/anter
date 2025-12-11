@@ -14,9 +14,11 @@ import 'src/features/settings/presentation/settings_screen.dart';
 
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
+import 'src/core/services/background_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeBackgroundService();
 
   final prefs = await SharedPreferences.getInstance();
 

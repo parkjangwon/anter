@@ -60,6 +60,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   webview_flutter: ^4.13.0
   archive: ^4.0.7
+  flutter_background_service: ^5.1.0
 
 dev_dependencies:
   flutter_test:
