@@ -19,6 +19,9 @@ class Sessions extends Table {
   IntColumn get safetyLevel => integer().withDefault(const Constant(0))();
   TextColumn get smartTunnelPorts =>
       text().nullable()(); // Comma separated ports
+  IntColumn get proxyJumpId => integer().nullable().references(Sessions, #id)();
+  BoolColumn get enableAgentForwarding =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

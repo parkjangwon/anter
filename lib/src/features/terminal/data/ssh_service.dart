@@ -7,13 +7,17 @@ import 'package:flutter/services.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:xterm/xterm.dart';
 import 'package:charset_converter/charset_converter.dart';
+import 'package:stream_channel/stream_channel.dart';
+import '../../../core/database/database.dart';
 import '../domain/script_step.dart';
 import '../../session_recording/domain/session_recorder.dart';
 
 class SSHService {
-  SSHClient? _client;
+  final List<SSHClient> _clients = [];
   String _encoding = 'utf-8';
   final Map<int, ServerSocket> _activeForwards = {};
+
+  SSHClient? get _client => _clients.isNotEmpty ? _clients.last : null;
 
   Future<int> startForwarding({required int remotePort, int? localPort}) async {
     if (_client == null) throw Exception('SSH client is not connected');
@@ -94,67 +98,98 @@ class SSHService {
   }
 
   Future<void> connect({
-    required String host,
-    required int port,
-    required String username,
-    String? password,
-    String? privateKeyPath,
-    String? passphrase,
+    required List<Session> hops,
     required Terminal terminal,
-    String? loginScript,
-    bool executeLoginScript = false,
     SessionRecorder? recorder,
     String encoding = 'utf-8',
   }) async {
     _encoding = encoding;
     if (recorder != null) _recorder = recorder;
 
+    // Clear previous clients if any
+    dispose();
+
     print(
-      'SSHService: connect called for $host:$port with encoding $_encoding',
+      'SSHService: connect called for chain: ${hops.map((s) => s.host).join(' -> ')}',
     );
     try {
-      terminal.write('Connecting to $host:$port...\r\n');
+      for (int i = 0; i < hops.length; i++) {
+        final session = hops[i];
+        terminal.write('Connecting to ${session.host}:${session.port}...\r\n');
 
-      final socket = await SSHSocket.connect(host, port);
-      print('SSHService: Socket connected');
+        dynamic socket;
 
-      _client = SSHClient(
-        socket,
-        username: username,
-        onPasswordRequest: () {
-          if (password != null) return password;
-          terminal.write('Password required but not provided.\r\n');
-          return '';
-        },
-        identities: privateKeyPath != null
-            ? await _loadIdentity(privateKeyPath, passphrase, terminal)
-            : [],
-      );
+        if (i == 0) {
+          socket = await SSHSocket.connect(session.host, session.port);
+        } else {
+          // Tunnel through previous client
+          final previousClient = _clients.last;
+          terminal.write('  via ${hops[i - 1].host}...\r\n');
+          // forwardLocal opens a direct-tcpip channel to the target
+          // Using dynamic to bypass strict analyzer check as SSHChannel usually implements what's needed
+          // or SSHClient constructor is flexible enough at runtime.
+          final dynamic forwardChannel = await previousClient.forwardLocal(
+            session.host,
+            session.port,
+          );
+          socket = forwardChannel as StreamChannel<List<int>>;
+        }
 
-      terminal.write('Connected. Authenticating...\r\n');
-      print('SSHService: Client created, waiting for authentication');
-      await _client!.authenticated;
-      terminal.write('Authenticated.\r\n');
-      print('SSHService: Authenticated');
+        print('SSHService: Socket connected for ${session.host}');
 
-      final session = await _client!.shell(
+        final identities = session.privateKeyPath != null
+            ? await _loadIdentity(
+                session.privateKeyPath!,
+                session.passphrase,
+                terminal,
+              )
+            : <SSHKeyPair>[];
+
+        final client = SSHClient(
+          socket as dynamic,
+          username: session.username,
+          onPasswordRequest: () {
+            if (session.password != null) return session.password!;
+            terminal.write(
+              'Password required for ${session.host} but not provided.\r\n',
+            );
+            return '';
+          },
+          identities: identities,
+        );
+
+        _clients.add(client);
+
+        terminal.write('Connected to ${session.host}. Authenticating...\r\n');
+        await client.authenticated;
+        terminal.write('Authenticated to ${session.host}.\r\n');
+      }
+
+      // Setup shell on the final client
+      final session = _clients.last;
+      final targetSessionData = hops.last;
+
+      print('SSHService: All hops connected. Starting shell.');
+
+      final shell = await session.shell(
         pty: SSHPtyConfig(
           width: terminal.viewWidth,
           height: terminal.viewHeight,
         ),
       );
+
       print('SSHService: Shell session started');
 
       terminal.buffer.clear();
 
       // Pipe stdout/stderr to terminal with encoding conversion
-      session.stdout.listen((data) async {
+      shell.stdout.listen((data) async {
         final decoded = await _decodeWithEncoding(data);
         terminal.write(decoded);
         _recorder?.write(decoded);
       });
 
-      session.stderr.listen((data) async {
+      shell.stderr.listen((data) async {
         final decoded = await _decodeWithEncoding(data);
         terminal.write(decoded);
         _recorder?.write(decoded);
@@ -162,72 +197,39 @@ class SSHService {
 
       // Pipe terminal input to stdin with encoding conversion
       terminal.onOutput = (data) async {
-        // [Hotfix] Intercept control + tab input to prevent ghost characters
-        // when using global shortcuts.
+        // [Hotfix] Intercept control + tab input
         final isCtrl = HardwareKeyboard.instance.isControlPressed;
         if (isCtrl && (data == '\t' || data.codeUnits.contains(9))) {
           return;
         }
 
-        session.write(await _encodeWithEncoding(data));
+        shell.write(await _encodeWithEncoding(data));
       };
 
       // Handle window resize
       terminal.onResize = (w, h, pw, ph) {
-        session.resizeTerminal(w, h, pw, ph);
+        shell.resizeTerminal(w, h, pw, ph);
       };
 
-      // Execute login script if enabled
-      if (executeLoginScript && loginScript != null && loginScript.isNotEmpty) {
-        await _executeLoginScript(session, loginScript, terminal);
+      // Execute login script if enabled (only for target)
+      if (targetSessionData.executeLoginScript &&
+          targetSessionData.loginScript != null &&
+          targetSessionData.loginScript!.isNotEmpty) {
+        await _executeLoginScript(
+          shell,
+          targetSessionData.loginScript!,
+          terminal,
+        );
       }
 
-      print('SSHService: Setup complete, waiting for session done');
-      // We should NOT await session.done here, because that blocks createTab!
-      // We want to return as soon as connection is established.
-      // BUT the original code awaited session.done.
-      // If we await session.done, createTab waits until the session ENDS.
-      // This is WRONG. createTab should return once connected.
+      print('SSHService: Setup complete');
 
-      // Wait, if we don't await session.done, we exit the try block.
-      // And the finally block runs.
-      // And _client?.close() runs.
-      // So the connection closes immediately!
-
-      // This is the bug!
-      // The original code awaited session.done, which meant createTab blocked until session closed.
-      // If createTab blocks, the UI waits.
-      // But the UI is async?
-      // onPressed awaits createTab.
-      // So the button stays pressed until session closes?
-      // No, onPressed is async, so it returns a Future.
-      // But if createTab awaits session.done, the "await createTab" in onPressed waits forever (until session closes).
-      // This means the code AFTER await createTab (if any) won't run.
-      // But more importantly, does this block the UI?
-      // No, it's async.
-
-      // However, if createTab blocks, then state = state.copyWith(...) is NOT REACHED until session closes!
-      // Look at createTab:
-      // await service.connect(...)
-      // state = state.copyWith(...)
-
-      // If connect awaits session.done, then state is NOT updated until session closes.
-      // So the tab is NOT added to the state until the session is closed!
-      // This explains "no reaction". The tab is never added while the session is active.
-
-      // Fix: SSHService.connect should NOT await session.done.
-      // But we need to keep the client open.
-      // So we cannot use try...finally to close the client.
-      // We need to handle cleanup differently.
-
-      // I will fix this logic now.
-
-      _handleSessionCompletion(session, terminal);
+      _handleSessionCompletion(shell, terminal);
     } catch (e) {
       print('SSHService: Error: $e');
       terminal.write('Error: $e\r\n');
-      _client?.close();
-      rethrow; // Rethrow so createTab knows it failed
+      dispose(); // Close all
+      rethrow;
     }
   }
 
@@ -241,7 +243,7 @@ class SSHService {
     } catch (e) {
       terminal.write('Error: $e\r\n');
     } finally {
-      _client?.close();
+      dispose();
     }
   }
 
@@ -273,7 +275,10 @@ class SSHService {
   }
 
   void dispose() {
-    _client?.close();
+    for (final client in _clients.reversed) {
+      client.close();
+    }
+    _clients.clear();
   }
 
   Future<List<SSHKeyPair>> _loadIdentity(

@@ -141,6 +141,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen>
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       safetyLevel: 0,
+      enableAgentForwarding: false,
     );
     await ref.read(tabManagerProvider.notifier).createTab(session);
   }

@@ -39,15 +39,10 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   }
 
   Future<void> _connectSSH() async {
-    await _sshService.connect(
-      host: widget.session.host,
-      port: widget.session.port,
-      username: widget.session.username,
-      password: widget.session.password,
-      privateKeyPath: widget.session.privateKeyPath,
-      passphrase: widget.session.passphrase,
-      terminal: _terminal,
-    );
+    // Note: TerminalScreen currently only supports direct connection or manually resolved chains.
+    // To support ProxyJump here, we would need to resolve the chain similar to TabManager.
+    // For now, we wrap the single session.
+    await _sshService.connect(hops: [widget.session], terminal: _terminal);
   }
 
   @override

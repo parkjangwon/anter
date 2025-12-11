@@ -29,6 +29,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   String? _privateKeyPath;
   bool _usePemKey = false;
   int _safetyLevel = 0;
+  int? _proxyJumpId;
+  bool _enableAgentForwarding = false;
 
   @override
   void initState() {
@@ -44,6 +46,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       _passphraseController.text = widget.session!.passphrase ?? '';
       _safetyLevel = widget.session!.safetyLevel;
       _smartTunnelPortsController.text = widget.session!.smartTunnelPorts ?? '';
+      _proxyJumpId = widget.session!.proxyJumpId;
+      _enableAgentForwarding = widget.session!.enableAgentForwarding;
 
       if (_privateKeyPath != null && _privateKeyPath!.isNotEmpty) {
         _usePemKey = true;
@@ -115,6 +119,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
               ? null
               : _smartTunnelPortsController.text,
         ),
+        proxyJumpId: drift.Value(_proxyJumpId),
+        enableAgentForwarding: drift.Value(_enableAgentForwarding),
       );
       await ref.read(sessionRepositoryProvider.notifier).upsert(session);
       if (mounted) {
@@ -127,6 +133,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   Widget build(BuildContext context) {
     final isMacOS = Theme.of(context).platform == TargetPlatform.macOS;
     final double topPadding = isMacOS ? 28.0 : 0.0;
+    final sessionsAsync = ref.watch(sessionRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -248,6 +255,54 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                   hintText: 'e.g. 8080, 3000, 5000',
                 ),
               ),
+              const SizedBox(height: 16),
+              // Network / Gateway Section
+              const Text(
+                'Network / Connectivity',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              sessionsAsync.when(
+                data: (sessions) {
+                  // Filter out current session to avoid self-reference
+                  final availableGateways = sessions.where((s) {
+                    if (widget.session?.id != null) {
+                      return s.id != widget.session!.id;
+                    }
+                    return true;
+                  }).toList();
+
+                  return DropdownButtonFormField<int>(
+                    value: _proxyJumpId,
+                    decoration: const InputDecoration(
+                      labelText: 'Gateway / Proxy Jump Host',
+                      helperText: 'Connect via another server (Bastion Host)',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int>(
+                        value: null,
+                        child: Text('Direct Connection (None)'),
+                      ),
+                      ...availableGateways.map((s) {
+                        return DropdownMenuItem<int>(
+                          value: s.id,
+                          child: Text('${s.name} (${s.host})'),
+                        );
+                      }),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _proxyJumpId = value;
+                      });
+                    },
+                  );
+                },
+                loading: () => const LinearProgressIndicator(),
+                error: (err, stack) => Text('Error loading sessions: $err'),
+              ),
+              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               const SizedBox(height: 16),
               const Text(
                 'Authentication',

@@ -16,7 +16,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -42,6 +42,11 @@ class AppDatabase extends _$AppDatabase {
         if (from < 6) {
           // Add SessionRecordings table
           await migrator.createTable(sessionRecordings);
+        }
+        if (from < 7) {
+          // Add proxyJumpId and enableAgentForwarding columns
+          await migrator.addColumn(sessions, sessions.proxyJumpId);
+          await migrator.addColumn(sessions, sessions.enableAgentForwarding);
         }
       },
     );

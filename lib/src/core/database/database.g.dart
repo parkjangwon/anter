@@ -509,6 +509,35 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _proxyJumpIdMeta = const VerificationMeta(
+    'proxyJumpId',
+  );
+  @override
+  late final GeneratedColumn<int> proxyJumpId = GeneratedColumn<int>(
+    'proxy_jump_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions (id)',
+    ),
+  );
+  static const VerificationMeta _enableAgentForwardingMeta =
+      const VerificationMeta('enableAgentForwarding');
+  @override
+  late final GeneratedColumn<bool> enableAgentForwarding =
+      GeneratedColumn<bool>(
+        'enable_agent_forwarding',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("enable_agent_forwarding" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -549,6 +578,8 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     tag,
     safetyLevel,
     smartTunnelPorts,
+    proxyJumpId,
+    enableAgentForwarding,
     createdAt,
     updatedAt,
   ];
@@ -666,6 +697,24 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('proxy_jump_id')) {
+      context.handle(
+        _proxyJumpIdMeta,
+        proxyJumpId.isAcceptableOrUnknown(
+          data['proxy_jump_id']!,
+          _proxyJumpIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('enable_agent_forwarding')) {
+      context.handle(
+        _enableAgentForwardingMeta,
+        enableAgentForwarding.isAcceptableOrUnknown(
+          data['enable_agent_forwarding']!,
+          _enableAgentForwardingMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -743,6 +792,14 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.string,
         data['${effectivePrefix}smart_tunnel_ports'],
       ),
+      proxyJumpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}proxy_jump_id'],
+      ),
+      enableAgentForwarding: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enable_agent_forwarding'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -775,6 +832,8 @@ class Session extends DataClass implements Insertable<Session> {
   final String? tag;
   final int safetyLevel;
   final String? smartTunnelPorts;
+  final int? proxyJumpId;
+  final bool enableAgentForwarding;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Session({
@@ -792,6 +851,8 @@ class Session extends DataClass implements Insertable<Session> {
     this.tag,
     required this.safetyLevel,
     this.smartTunnelPorts,
+    this.proxyJumpId,
+    required this.enableAgentForwarding,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -826,6 +887,10 @@ class Session extends DataClass implements Insertable<Session> {
     if (!nullToAbsent || smartTunnelPorts != null) {
       map['smart_tunnel_ports'] = Variable<String>(smartTunnelPorts);
     }
+    if (!nullToAbsent || proxyJumpId != null) {
+      map['proxy_jump_id'] = Variable<int>(proxyJumpId);
+    }
+    map['enable_agent_forwarding'] = Variable<bool>(enableAgentForwarding);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -859,6 +924,10 @@ class Session extends DataClass implements Insertable<Session> {
       smartTunnelPorts: smartTunnelPorts == null && nullToAbsent
           ? const Value.absent()
           : Value(smartTunnelPorts),
+      proxyJumpId: proxyJumpId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(proxyJumpId),
+      enableAgentForwarding: Value(enableAgentForwarding),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -884,6 +953,10 @@ class Session extends DataClass implements Insertable<Session> {
       tag: serializer.fromJson<String?>(json['tag']),
       safetyLevel: serializer.fromJson<int>(json['safetyLevel']),
       smartTunnelPorts: serializer.fromJson<String?>(json['smartTunnelPorts']),
+      proxyJumpId: serializer.fromJson<int?>(json['proxyJumpId']),
+      enableAgentForwarding: serializer.fromJson<bool>(
+        json['enableAgentForwarding'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -906,6 +979,8 @@ class Session extends DataClass implements Insertable<Session> {
       'tag': serializer.toJson<String?>(tag),
       'safetyLevel': serializer.toJson<int>(safetyLevel),
       'smartTunnelPorts': serializer.toJson<String?>(smartTunnelPorts),
+      'proxyJumpId': serializer.toJson<int?>(proxyJumpId),
+      'enableAgentForwarding': serializer.toJson<bool>(enableAgentForwarding),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -926,6 +1001,8 @@ class Session extends DataClass implements Insertable<Session> {
     Value<String?> tag = const Value.absent(),
     int? safetyLevel,
     Value<String?> smartTunnelPorts = const Value.absent(),
+    Value<int?> proxyJumpId = const Value.absent(),
+    bool? enableAgentForwarding,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -947,6 +1024,8 @@ class Session extends DataClass implements Insertable<Session> {
     smartTunnelPorts: smartTunnelPorts.present
         ? smartTunnelPorts.value
         : this.smartTunnelPorts,
+    proxyJumpId: proxyJumpId.present ? proxyJumpId.value : this.proxyJumpId,
+    enableAgentForwarding: enableAgentForwarding ?? this.enableAgentForwarding,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -978,6 +1057,12 @@ class Session extends DataClass implements Insertable<Session> {
       smartTunnelPorts: data.smartTunnelPorts.present
           ? data.smartTunnelPorts.value
           : this.smartTunnelPorts,
+      proxyJumpId: data.proxyJumpId.present
+          ? data.proxyJumpId.value
+          : this.proxyJumpId,
+      enableAgentForwarding: data.enableAgentForwarding.present
+          ? data.enableAgentForwarding.value
+          : this.enableAgentForwarding,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1000,6 +1085,8 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('tag: $tag, ')
           ..write('safetyLevel: $safetyLevel, ')
           ..write('smartTunnelPorts: $smartTunnelPorts, ')
+          ..write('proxyJumpId: $proxyJumpId, ')
+          ..write('enableAgentForwarding: $enableAgentForwarding, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1022,6 +1109,8 @@ class Session extends DataClass implements Insertable<Session> {
     tag,
     safetyLevel,
     smartTunnelPorts,
+    proxyJumpId,
+    enableAgentForwarding,
     createdAt,
     updatedAt,
   );
@@ -1043,6 +1132,8 @@ class Session extends DataClass implements Insertable<Session> {
           other.tag == this.tag &&
           other.safetyLevel == this.safetyLevel &&
           other.smartTunnelPorts == this.smartTunnelPorts &&
+          other.proxyJumpId == this.proxyJumpId &&
+          other.enableAgentForwarding == this.enableAgentForwarding &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1062,6 +1153,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<String?> tag;
   final Value<int> safetyLevel;
   final Value<String?> smartTunnelPorts;
+  final Value<int?> proxyJumpId;
+  final Value<bool> enableAgentForwarding;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SessionsCompanion({
@@ -1079,6 +1172,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.tag = const Value.absent(),
     this.safetyLevel = const Value.absent(),
     this.smartTunnelPorts = const Value.absent(),
+    this.proxyJumpId = const Value.absent(),
+    this.enableAgentForwarding = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1097,6 +1192,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.tag = const Value.absent(),
     this.safetyLevel = const Value.absent(),
     this.smartTunnelPorts = const Value.absent(),
+    this.proxyJumpId = const Value.absent(),
+    this.enableAgentForwarding = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -1117,6 +1214,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<String>? tag,
     Expression<int>? safetyLevel,
     Expression<String>? smartTunnelPorts,
+    Expression<int>? proxyJumpId,
+    Expression<bool>? enableAgentForwarding,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1136,6 +1235,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (tag != null) 'tag': tag,
       if (safetyLevel != null) 'safety_level': safetyLevel,
       if (smartTunnelPorts != null) 'smart_tunnel_ports': smartTunnelPorts,
+      if (proxyJumpId != null) 'proxy_jump_id': proxyJumpId,
+      if (enableAgentForwarding != null)
+        'enable_agent_forwarding': enableAgentForwarding,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1156,6 +1258,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<String?>? tag,
     Value<int>? safetyLevel,
     Value<String?>? smartTunnelPorts,
+    Value<int?>? proxyJumpId,
+    Value<bool>? enableAgentForwarding,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1174,6 +1278,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       tag: tag ?? this.tag,
       safetyLevel: safetyLevel ?? this.safetyLevel,
       smartTunnelPorts: smartTunnelPorts ?? this.smartTunnelPorts,
+      proxyJumpId: proxyJumpId ?? this.proxyJumpId,
+      enableAgentForwarding:
+          enableAgentForwarding ?? this.enableAgentForwarding,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1224,6 +1331,14 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (smartTunnelPorts.present) {
       map['smart_tunnel_ports'] = Variable<String>(smartTunnelPorts.value);
     }
+    if (proxyJumpId.present) {
+      map['proxy_jump_id'] = Variable<int>(proxyJumpId.value);
+    }
+    if (enableAgentForwarding.present) {
+      map['enable_agent_forwarding'] = Variable<bool>(
+        enableAgentForwarding.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1250,6 +1365,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('tag: $tag, ')
           ..write('safetyLevel: $safetyLevel, ')
           ..write('smartTunnelPorts: $smartTunnelPorts, ')
+          ..write('proxyJumpId: $proxyJumpId, ')
+          ..write('enableAgentForwarding: $enableAgentForwarding, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2028,6 +2145,8 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<String?> tag,
       Value<int> safetyLevel,
       Value<String?> smartTunnelPorts,
+      Value<int?> proxyJumpId,
+      Value<bool> enableAgentForwarding,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2047,6 +2166,8 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<String?> tag,
       Value<int> safetyLevel,
       Value<String?> smartTunnelPorts,
+      Value<int?> proxyJumpId,
+      Value<bool> enableAgentForwarding,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2067,6 +2188,25 @@ final class $$SessionsTableReferences
       $_db.groups,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $SessionsTable _proxyJumpIdTable(_$AppDatabase db) =>
+      db.sessions.createAlias(
+        $_aliasNameGenerator(db.sessions.proxyJumpId, db.sessions.id),
+      );
+
+  $$SessionsTableProcessedTableManager? get proxyJumpId {
+    final $_column = $_itemColumn<int>('proxy_jump_id');
+    if ($_column == null) return null;
+    final manager = $$SessionsTableTableManager(
+      $_db,
+      $_db.sessions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_proxyJumpIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -2172,6 +2312,11 @@ class $$SessionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get enableAgentForwarding => $composableBuilder(
+    column: $table.enableAgentForwarding,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -2196,6 +2341,29 @@ class $$SessionsTableFilterComposer
           }) => $$GroupsTableFilterComposer(
             $db: $db,
             $table: $db.groups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionsTableFilterComposer get proxyJumpId {
+    final $$SessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.proxyJumpId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2305,6 +2473,11 @@ class $$SessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get enableAgentForwarding => $composableBuilder(
+    column: $table.enableAgentForwarding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2329,6 +2502,29 @@ class $$SessionsTableOrderingComposer
           }) => $$GroupsTableOrderingComposer(
             $db: $db,
             $table: $db.groups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionsTableOrderingComposer get proxyJumpId {
+    final $$SessionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.proxyJumpId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2399,6 +2595,11 @@ class $$SessionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get enableAgentForwarding => $composableBuilder(
+    column: $table.enableAgentForwarding,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -2419,6 +2620,29 @@ class $$SessionsTableAnnotationComposer
           }) => $$GroupsTableAnnotationComposer(
             $db: $db,
             $table: $db.groups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionsTableAnnotationComposer get proxyJumpId {
+    final $$SessionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.proxyJumpId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2468,7 +2692,11 @@ class $$SessionsTableTableManager
           $$SessionsTableUpdateCompanionBuilder,
           (Session, $$SessionsTableReferences),
           Session,
-          PrefetchHooks Function({bool groupId, bool sessionRecordingsRefs})
+          PrefetchHooks Function({
+            bool groupId,
+            bool proxyJumpId,
+            bool sessionRecordingsRefs,
+          })
         > {
   $$SessionsTableTableManager(_$AppDatabase db, $SessionsTable table)
     : super(
@@ -2497,6 +2725,8 @@ class $$SessionsTableTableManager
                 Value<String?> tag = const Value.absent(),
                 Value<int> safetyLevel = const Value.absent(),
                 Value<String?> smartTunnelPorts = const Value.absent(),
+                Value<int?> proxyJumpId = const Value.absent(),
+                Value<bool> enableAgentForwarding = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion(
@@ -2514,6 +2744,8 @@ class $$SessionsTableTableManager
                 tag: tag,
                 safetyLevel: safetyLevel,
                 smartTunnelPorts: smartTunnelPorts,
+                proxyJumpId: proxyJumpId,
+                enableAgentForwarding: enableAgentForwarding,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2533,6 +2765,8 @@ class $$SessionsTableTableManager
                 Value<String?> tag = const Value.absent(),
                 Value<int> safetyLevel = const Value.absent(),
                 Value<String?> smartTunnelPorts = const Value.absent(),
+                Value<int?> proxyJumpId = const Value.absent(),
+                Value<bool> enableAgentForwarding = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion.insert(
@@ -2550,6 +2784,8 @@ class $$SessionsTableTableManager
                 tag: tag,
                 safetyLevel: safetyLevel,
                 smartTunnelPorts: smartTunnelPorts,
+                proxyJumpId: proxyJumpId,
+                enableAgentForwarding: enableAgentForwarding,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2562,7 +2798,11 @@ class $$SessionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({groupId = false, sessionRecordingsRefs = false}) {
+              ({
+                groupId = false,
+                proxyJumpId = false,
+                sessionRecordingsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
@@ -2593,6 +2833,19 @@ class $$SessionsTableTableManager
                                         ._groupIdTable(db),
                                     referencedColumn: $$SessionsTableReferences
                                         ._groupIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (proxyJumpId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.proxyJumpId,
+                                    referencedTable: $$SessionsTableReferences
+                                        ._proxyJumpIdTable(db),
+                                    referencedColumn: $$SessionsTableReferences
+                                        ._proxyJumpIdTable(db)
                                         .id,
                                   )
                                   as T;
@@ -2643,7 +2896,11 @@ typedef $$SessionsTableProcessedTableManager =
       $$SessionsTableUpdateCompanionBuilder,
       (Session, $$SessionsTableReferences),
       Session,
-      PrefetchHooks Function({bool groupId, bool sessionRecordingsRefs})
+      PrefetchHooks Function({
+        bool groupId,
+        bool proxyJumpId,
+        bool sessionRecordingsRefs,
+      })
     >;
 typedef $$SessionRecordingsTableCreateCompanionBuilder =
     SessionRecordingsCompanion Function({

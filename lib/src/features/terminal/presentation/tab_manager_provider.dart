@@ -133,6 +133,19 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
     }
 
     try {
+      print('TabManagerNotifier: Resolving session chain...');
+      List<Session> chain = [];
+      try {
+        chain = await _resolveSessionChain(session);
+        print(
+          'TabManagerNotifier: Chain resolved: ${chain.map((s) => s.host).join(' -> ')}',
+        );
+      } catch (e) {
+        print('TabManagerNotifier: Error resolving chain: $e');
+        terminal.write('Error resolving proxy chain: $e\r\n');
+        return;
+      }
+
       if (session.host.toLowerCase() == 'local') {
         // Local terminal
         service = LocalTerminalService();
@@ -142,15 +155,10 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
         service = SSHService();
         print('TabManagerNotifier: Connecting SSH...');
         await service.connect(
-          host: session.host,
-          port: session.port,
-          username: session.username,
-          password: session.password,
-          privateKeyPath: session.privateKeyPath,
-          passphrase: session.passphrase,
+          hops: chain,
           terminal: terminal,
-          loginScript: session.loginScript,
-          executeLoginScript: session.executeLoginScript,
+          // loginScript: session.loginScript, // Handled internally by service using session data
+          // executeLoginScript: session.executeLoginScript, // Handled internally
           encoding: settings.terminalEncoding.charsetName,
           recorder: recorder,
         );
@@ -576,6 +584,33 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
         }
       }
     }
+  }
+
+  Future<List<Session>> _resolveSessionChain(Session session) async {
+    final db = ref.read(databaseProvider);
+    final List<Session> chain = [session];
+    final Set<int> seenIds = {session.id};
+
+    int? currentProxyId = session.proxyJumpId;
+    int depth = 0;
+
+    while (currentProxyId != null && depth < 10) {
+      if (seenIds.contains(currentProxyId)) {
+        throw Exception('Circular proxy jump detected');
+      }
+      seenIds.add(currentProxyId);
+
+      final parent = await (db.select(
+        db.sessions,
+      )..where((s) => s.id.equals(currentProxyId!))).getSingleOrNull();
+
+      if (parent == null) break;
+
+      chain.insert(0, parent); // Prepend to chain
+      currentProxyId = parent.proxyJumpId;
+      depth++;
+    }
+    return chain;
   }
 }
 
