@@ -31,7 +31,12 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   bool _usePemKey = false;
   int _safetyLevel = 0;
   int? _proxyJumpId;
+
   // bool _enableAgentForwarding = false; // Removed
+
+  // Login Script
+  bool _executeLoginScript = false;
+  final List<Map<String, dynamic>> _loginScriptSteps = [];
 
   final List<String> _keywords = [];
   bool _isRegexInput = false;
@@ -66,6 +71,17 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
           _keywords.addAll(loaded.cast<String>());
         } catch (e) {
           // ignore error
+        }
+      }
+
+      // Load Login Script
+      _executeLoginScript = widget.session!.executeLoginScript;
+      if (widget.session!.loginScript != null) {
+        try {
+          final List<dynamic> steps = jsonDecode(widget.session!.loginScript!);
+          _loginScriptSteps.addAll(steps.cast<Map<String, dynamic>>());
+        } catch (e) {
+          print('Error loading login script: $e');
         }
       }
     }
@@ -161,6 +177,11 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
         notificationKeywords: drift.Value(
           _keywords.isEmpty ? null : jsonEncode(_keywords),
         ),
+
+        loginScript: drift.Value(
+          _loginScriptSteps.isEmpty ? null : jsonEncode(_loginScriptSteps),
+        ),
+        executeLoginScript: drift.Value(_executeLoginScript),
       );
       await ref.read(sessionRepositoryProvider.notifier).upsert(session);
       if (mounted) {
@@ -296,6 +317,157 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Login Script (Expect / Send)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Switch(
+                    value: _executeLoginScript,
+                    onChanged: (value) {
+                      setState(() {
+                        _executeLoginScript = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              if (_executeLoginScript) ...[
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  height: 200,
+                  child: _loginScriptSteps.isEmpty
+                      ? const Center(
+                          child: Text('No steps defined. Add one below.'),
+                        )
+                      : ReorderableListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _loginScriptSteps.length,
+                          onReorder: (oldIndex, newIndex) {
+                            setState(() {
+                              if (oldIndex < newIndex) {
+                                newIndex -= 1;
+                              }
+                              final item = _loginScriptSteps.removeAt(oldIndex);
+                              _loginScriptSteps.insert(newIndex, item);
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            final step = _loginScriptSteps[index];
+                            return Card(
+                              key: ValueKey('step_\$index'),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        ReorderableDragStartListener(
+                                          index: index,
+                                          child: const Icon(Icons.drag_handle),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Step',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            size: 16,
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _loginScriptSteps.removeAt(index);
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            initialValue:
+                                                step['expect'] as String?,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Expect',
+                                              isDense: true,
+                                              hintText: 'e.g. password:',
+                                            ),
+                                            onChanged: (val) {
+                                              step['expect'] = val;
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Column(
+                                          children: [
+                                            const Text(
+                                              'Regex',
+                                              style: TextStyle(fontSize: 10),
+                                            ),
+                                            Checkbox(
+                                              value: step['isRegex'] == true,
+                                              onChanged: (val) {
+                                                setState(() {
+                                                  step['isRegex'] = val;
+                                                });
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    TextFormField(
+                                      initialValue: step['send'] as String?,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Send',
+                                        isDense: true,
+                                        hintText: 'e.g. mySecretPassword',
+                                      ),
+                                      onChanged: (val) {
+                                        step['send'] = val;
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _loginScriptSteps.add({
+                        'expect': '',
+                        'send': '',
+                        'isRegex': false,
+                      });
+                    });
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Step'),
+                ),
+              ],
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+
               // Network / Gateway Section
               const Text(
                 'Network / Connectivity',

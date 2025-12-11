@@ -1,7 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
+
 import 'package:xterm/xterm.dart';
 import '../../../core/database/database.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -114,11 +113,6 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
     dynamic service;
     SessionRecorder? recorder;
     int? recordingId;
-
-    // Check auto-record setting
-    if (Platform.isAndroid) {
-      FlutterBackgroundService().startService();
-    }
 
     if (settings.autoRecordSessions) {
       try {
@@ -290,10 +284,6 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
     }
 
     state = state.copyWith(tabs: newTabs, activeTabIndex: newActiveIndex);
-
-    if (state.tabs.isEmpty && Platform.isAndroid) {
-      FlutterBackgroundService().invoke("stopService");
-    }
   }
 
   /// Merge source tab into target tab
@@ -578,10 +568,6 @@ class TabManagerNotifier extends Notifier<TabManagerState> {
         }
       }
       tab.dispose();
-    }
-
-    if (Platform.isAndroid) {
-      FlutterBackgroundService().invoke("stopService");
     }
   }
 
