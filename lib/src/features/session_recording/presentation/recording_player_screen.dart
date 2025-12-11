@@ -5,6 +5,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
+
+import '../../settings/presentation/settings_provider.dart';
+import '../../settings/domain/settings_state.dart';
+import '../../../core/theme/terminal_themes.dart' as app_theme;
 import '../../../core/database/database.dart';
 
 // Actually TerminalViewWidget wraps TerminalView with search etc.
@@ -182,6 +186,7 @@ class _RecordingPlayerScreenState extends ConsumerState<RecordingPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final isMacOS = Theme.of(context).platform == TargetPlatform.macOS;
+    final settings = ref.watch(settingsProvider);
 
     return Scaffold(
       body: Column(
@@ -258,6 +263,11 @@ class _RecordingPlayerScreenState extends ConsumerState<RecordingPlayerScreen> {
                     child: TerminalView(
                       _terminal,
                       controller: _terminalController,
+                      textStyle: TerminalStyle(
+                        fontSize: settings.fontSize,
+                        fontFamily: settings.fontFamily,
+                      ),
+                      theme: _getTerminalTheme(settings.colorScheme),
                       autofocus: true,
                       readOnly: true,
                       backgroundOpacity: 1, // Ensure solid background
@@ -407,5 +417,28 @@ class _RecordingPlayerScreenState extends ConsumerState<RecordingPlayerScreen> {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+
+  TerminalTheme _getTerminalTheme(TerminalColorScheme scheme) {
+    switch (scheme) {
+      case TerminalColorScheme.dracula:
+        return app_theme.TerminalThemes.dracula;
+      case TerminalColorScheme.monokai:
+        return app_theme.TerminalThemes.monokai;
+      case TerminalColorScheme.solarizedDark:
+        return app_theme.TerminalThemes.solarizedDark;
+      case TerminalColorScheme.solarizedLight:
+        return app_theme.TerminalThemes.solarizedLight;
+      case TerminalColorScheme.gruvboxDark:
+        return app_theme.TerminalThemes.gruvboxDark;
+      case TerminalColorScheme.gruvboxLight:
+        return app_theme.TerminalThemes.gruvboxLight;
+      case TerminalColorScheme.nord:
+        return app_theme.TerminalThemes.nord;
+      case TerminalColorScheme.oneDark:
+        return app_theme.TerminalThemes.oneDark;
+      case TerminalColorScheme.oneLight:
+        return app_theme.TerminalThemes.oneLight;
+    }
   }
 }

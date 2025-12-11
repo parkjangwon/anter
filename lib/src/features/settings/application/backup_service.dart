@@ -151,6 +151,13 @@ class BackupService {
                 tag: drift.Value(sessionData.tag),
                 loginScript: drift.Value(sessionData.loginScript),
                 executeLoginScript: drift.Value(sessionData.executeLoginScript),
+                proxyJumpId: drift.Value(sessionData.proxyJumpId),
+                enableAgentForwarding: drift.Value(
+                  sessionData.enableAgentForwarding,
+                ),
+                notificationKeywords: drift.Value(
+                  sessionData.notificationKeywords,
+                ),
                 safetyLevel: drift.Value(sessionData.safetyLevel),
                 createdAt: drift.Value(sessionData.createdAt),
                 updatedAt: drift.Value(sessionData.updatedAt),
