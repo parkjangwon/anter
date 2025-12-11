@@ -6,6 +6,8 @@ import '../data/ssh_service.dart';
 import '../data/local_terminal_service.dart';
 import '../../settings/presentation/settings_provider.dart';
 import 'web_view_sheet.dart';
+import 'dart:io';
+import 'widgets/virtual_key_toolbar.dart';
 
 class TerminalScreen extends ConsumerStatefulWidget {
   final Session session;
@@ -21,10 +23,12 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   final _terminalController = TerminalController();
   final _sshService = SSHService();
   final _localService = LocalTerminalService();
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
     _terminal = Terminal(maxLines: 10000);
 
     if (widget.session.host == 'local') {
@@ -47,6 +51,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _sshService.dispose();
     _localService.dispose();
     super.dispose();
@@ -68,25 +73,33 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
         ],
       ),
       body: SafeArea(
-        child: TerminalView(
-          _terminal,
-          controller: _terminalController,
-          textStyle: TerminalStyle(
-            fontSize: settings.fontSize,
-            fontFamily: settings.fontFamily,
-          ),
-          autofocus: true,
-          focusNode: FocusNode()..requestFocus(),
-          backgroundOpacity: 0.9,
-          onSecondaryTapDown: (details, offset) async {
-            final selection = _terminalController.selection;
-            if (selection != null) {
-              _terminalController.clearSelection();
-              // TODO: Copy to clipboard
-            } else {
-              // TODO: Paste from clipboard
-            }
-          },
+        child: Column(
+          children: [
+            Expanded(
+              child: TerminalView(
+                _terminal,
+                controller: _terminalController,
+                textStyle: TerminalStyle(
+                  fontSize: settings.fontSize,
+                  fontFamily: settings.fontFamily,
+                ),
+                autofocus: true,
+                focusNode: _focusNode,
+                backgroundOpacity: 0.9,
+                onSecondaryTapDown: (details, offset) async {
+                  final selection = _terminalController.selection;
+                  if (selection != null) {
+                    _terminalController.clearSelection();
+                    // TODO: Copy to clipboard
+                  } else {
+                    // TODO: Paste from clipboard
+                  }
+                },
+              ),
+            ),
+            if (Platform.isAndroid || Platform.isIOS)
+              VirtualKeyToolbar(terminal: _terminal),
+          ],
         ),
       ),
     );

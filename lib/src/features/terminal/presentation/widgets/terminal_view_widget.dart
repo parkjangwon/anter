@@ -6,6 +6,8 @@ import '../../../settings/presentation/settings_provider.dart';
 import '../../../settings/domain/settings_state.dart';
 import '../../../settings/domain/shortcut_intents.dart';
 import '../../../../core/theme/terminal_themes.dart' as app_theme;
+import 'dart:io';
+import 'virtual_key_toolbar.dart';
 
 class TerminalViewWidget extends ConsumerStatefulWidget {
   final Terminal terminal;
@@ -184,16 +186,24 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
                 ? Border.all(color: borderColor, width: borderWidth)
                 : null,
           ),
-          child: TerminalView(
-            widget.terminal,
-            textStyle: TerminalStyle(
-              fontSize: settings.fontSize,
-              fontFamily: settings.fontFamily,
-            ),
-            autofocus: true,
-            focusNode: _internalFocusNode,
-            backgroundOpacity: 0, // Ensure background shows through
-            theme: _getTerminalTheme(settings.colorScheme),
+          child: Column(
+            children: [
+              Expanded(
+                child: TerminalView(
+                  widget.terminal,
+                  textStyle: TerminalStyle(
+                    fontSize: settings.fontSize,
+                    fontFamily: settings.fontFamily,
+                  ),
+                  autofocus: true,
+                  focusNode: _internalFocusNode,
+                  backgroundOpacity: 0, // Ensure background shows through
+                  theme: _getTerminalTheme(settings.colorScheme),
+                ),
+              ),
+              if (Platform.isAndroid || Platform.isIOS)
+                VirtualKeyToolbar(terminal: widget.terminal),
+            ],
           ),
         ),
       ),
