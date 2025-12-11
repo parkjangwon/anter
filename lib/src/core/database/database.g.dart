@@ -538,6 +538,17 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _notificationKeywordsMeta =
+      const VerificationMeta('notificationKeywords');
+  @override
+  late final GeneratedColumn<String> notificationKeywords =
+      GeneratedColumn<String>(
+        'notification_keywords',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -580,6 +591,7 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     smartTunnelPorts,
     proxyJumpId,
     enableAgentForwarding,
+    notificationKeywords,
     createdAt,
     updatedAt,
   ];
@@ -715,6 +727,15 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('notification_keywords')) {
+      context.handle(
+        _notificationKeywordsMeta,
+        notificationKeywords.isAcceptableOrUnknown(
+          data['notification_keywords']!,
+          _notificationKeywordsMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -800,6 +821,10 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.bool,
         data['${effectivePrefix}enable_agent_forwarding'],
       )!,
+      notificationKeywords: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_keywords'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -834,6 +859,7 @@ class Session extends DataClass implements Insertable<Session> {
   final String? smartTunnelPorts;
   final int? proxyJumpId;
   final bool enableAgentForwarding;
+  final String? notificationKeywords;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Session({
@@ -853,6 +879,7 @@ class Session extends DataClass implements Insertable<Session> {
     this.smartTunnelPorts,
     this.proxyJumpId,
     required this.enableAgentForwarding,
+    this.notificationKeywords,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -891,6 +918,9 @@ class Session extends DataClass implements Insertable<Session> {
       map['proxy_jump_id'] = Variable<int>(proxyJumpId);
     }
     map['enable_agent_forwarding'] = Variable<bool>(enableAgentForwarding);
+    if (!nullToAbsent || notificationKeywords != null) {
+      map['notification_keywords'] = Variable<String>(notificationKeywords);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -928,6 +958,9 @@ class Session extends DataClass implements Insertable<Session> {
           ? const Value.absent()
           : Value(proxyJumpId),
       enableAgentForwarding: Value(enableAgentForwarding),
+      notificationKeywords: notificationKeywords == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notificationKeywords),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -957,6 +990,9 @@ class Session extends DataClass implements Insertable<Session> {
       enableAgentForwarding: serializer.fromJson<bool>(
         json['enableAgentForwarding'],
       ),
+      notificationKeywords: serializer.fromJson<String?>(
+        json['notificationKeywords'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -981,6 +1017,7 @@ class Session extends DataClass implements Insertable<Session> {
       'smartTunnelPorts': serializer.toJson<String?>(smartTunnelPorts),
       'proxyJumpId': serializer.toJson<int?>(proxyJumpId),
       'enableAgentForwarding': serializer.toJson<bool>(enableAgentForwarding),
+      'notificationKeywords': serializer.toJson<String?>(notificationKeywords),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1003,6 +1040,7 @@ class Session extends DataClass implements Insertable<Session> {
     Value<String?> smartTunnelPorts = const Value.absent(),
     Value<int?> proxyJumpId = const Value.absent(),
     bool? enableAgentForwarding,
+    Value<String?> notificationKeywords = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -1026,6 +1064,9 @@ class Session extends DataClass implements Insertable<Session> {
         : this.smartTunnelPorts,
     proxyJumpId: proxyJumpId.present ? proxyJumpId.value : this.proxyJumpId,
     enableAgentForwarding: enableAgentForwarding ?? this.enableAgentForwarding,
+    notificationKeywords: notificationKeywords.present
+        ? notificationKeywords.value
+        : this.notificationKeywords,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1063,6 +1104,9 @@ class Session extends DataClass implements Insertable<Session> {
       enableAgentForwarding: data.enableAgentForwarding.present
           ? data.enableAgentForwarding.value
           : this.enableAgentForwarding,
+      notificationKeywords: data.notificationKeywords.present
+          ? data.notificationKeywords.value
+          : this.notificationKeywords,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1087,6 +1131,7 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('smartTunnelPorts: $smartTunnelPorts, ')
           ..write('proxyJumpId: $proxyJumpId, ')
           ..write('enableAgentForwarding: $enableAgentForwarding, ')
+          ..write('notificationKeywords: $notificationKeywords, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1111,6 +1156,7 @@ class Session extends DataClass implements Insertable<Session> {
     smartTunnelPorts,
     proxyJumpId,
     enableAgentForwarding,
+    notificationKeywords,
     createdAt,
     updatedAt,
   );
@@ -1134,6 +1180,7 @@ class Session extends DataClass implements Insertable<Session> {
           other.smartTunnelPorts == this.smartTunnelPorts &&
           other.proxyJumpId == this.proxyJumpId &&
           other.enableAgentForwarding == this.enableAgentForwarding &&
+          other.notificationKeywords == this.notificationKeywords &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1155,6 +1202,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<String?> smartTunnelPorts;
   final Value<int?> proxyJumpId;
   final Value<bool> enableAgentForwarding;
+  final Value<String?> notificationKeywords;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SessionsCompanion({
@@ -1174,6 +1222,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.smartTunnelPorts = const Value.absent(),
     this.proxyJumpId = const Value.absent(),
     this.enableAgentForwarding = const Value.absent(),
+    this.notificationKeywords = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1194,6 +1243,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.smartTunnelPorts = const Value.absent(),
     this.proxyJumpId = const Value.absent(),
     this.enableAgentForwarding = const Value.absent(),
+    this.notificationKeywords = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -1216,6 +1266,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<String>? smartTunnelPorts,
     Expression<int>? proxyJumpId,
     Expression<bool>? enableAgentForwarding,
+    Expression<String>? notificationKeywords,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1238,6 +1289,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (proxyJumpId != null) 'proxy_jump_id': proxyJumpId,
       if (enableAgentForwarding != null)
         'enable_agent_forwarding': enableAgentForwarding,
+      if (notificationKeywords != null)
+        'notification_keywords': notificationKeywords,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1260,6 +1313,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<String?>? smartTunnelPorts,
     Value<int?>? proxyJumpId,
     Value<bool>? enableAgentForwarding,
+    Value<String?>? notificationKeywords,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1281,6 +1335,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       proxyJumpId: proxyJumpId ?? this.proxyJumpId,
       enableAgentForwarding:
           enableAgentForwarding ?? this.enableAgentForwarding,
+      notificationKeywords: notificationKeywords ?? this.notificationKeywords,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1339,6 +1394,11 @@ class SessionsCompanion extends UpdateCompanion<Session> {
         enableAgentForwarding.value,
       );
     }
+    if (notificationKeywords.present) {
+      map['notification_keywords'] = Variable<String>(
+        notificationKeywords.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1367,6 +1427,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('smartTunnelPorts: $smartTunnelPorts, ')
           ..write('proxyJumpId: $proxyJumpId, ')
           ..write('enableAgentForwarding: $enableAgentForwarding, ')
+          ..write('notificationKeywords: $notificationKeywords, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2147,6 +2208,7 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<String?> smartTunnelPorts,
       Value<int?> proxyJumpId,
       Value<bool> enableAgentForwarding,
+      Value<String?> notificationKeywords,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2168,6 +2230,7 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<String?> smartTunnelPorts,
       Value<int?> proxyJumpId,
       Value<bool> enableAgentForwarding,
+      Value<String?> notificationKeywords,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2314,6 +2377,11 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<bool> get enableAgentForwarding => $composableBuilder(
     column: $table.enableAgentForwarding,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationKeywords => $composableBuilder(
+    column: $table.notificationKeywords,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2478,6 +2546,11 @@ class $$SessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notificationKeywords => $composableBuilder(
+    column: $table.notificationKeywords,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2597,6 +2670,11 @@ class $$SessionsTableAnnotationComposer
 
   GeneratedColumn<bool> get enableAgentForwarding => $composableBuilder(
     column: $table.enableAgentForwarding,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notificationKeywords => $composableBuilder(
+    column: $table.notificationKeywords,
     builder: (column) => column,
   );
 
@@ -2727,6 +2805,7 @@ class $$SessionsTableTableManager
                 Value<String?> smartTunnelPorts = const Value.absent(),
                 Value<int?> proxyJumpId = const Value.absent(),
                 Value<bool> enableAgentForwarding = const Value.absent(),
+                Value<String?> notificationKeywords = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion(
@@ -2746,6 +2825,7 @@ class $$SessionsTableTableManager
                 smartTunnelPorts: smartTunnelPorts,
                 proxyJumpId: proxyJumpId,
                 enableAgentForwarding: enableAgentForwarding,
+                notificationKeywords: notificationKeywords,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2767,6 +2847,7 @@ class $$SessionsTableTableManager
                 Value<String?> smartTunnelPorts = const Value.absent(),
                 Value<int?> proxyJumpId = const Value.absent(),
                 Value<bool> enableAgentForwarding = const Value.absent(),
+                Value<String?> notificationKeywords = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion.insert(
@@ -2786,6 +2867,7 @@ class $$SessionsTableTableManager
                 smartTunnelPorts: smartTunnelPorts,
                 proxyJumpId: proxyJumpId,
                 enableAgentForwarding: enableAgentForwarding,
+                notificationKeywords: notificationKeywords,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

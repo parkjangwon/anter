@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:file_picker/file_picker.dart';
 import '../../../core/database/database.dart';
+import 'dart:convert';
 import '../data/session_repository.dart';
 
 class SessionEditorScreen extends ConsumerStatefulWidget {
@@ -30,7 +31,11 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   bool _usePemKey = false;
   int _safetyLevel = 0;
   int? _proxyJumpId;
-  bool _enableAgentForwarding = false;
+  // bool _enableAgentForwarding = false; // Removed
+
+  final List<String> _keywords = [];
+  bool _isRegexInput = false;
+  final _keywordController = TextEditingController();
 
   @override
   void initState() {
@@ -47,10 +52,21 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       _safetyLevel = widget.session!.safetyLevel;
       _smartTunnelPortsController.text = widget.session!.smartTunnelPorts ?? '';
       _proxyJumpId = widget.session!.proxyJumpId;
-      _enableAgentForwarding = widget.session!.enableAgentForwarding;
+      // _enableAgentForwarding = widget.session!.enableAgentForwarding; // Removed
 
       if (_privateKeyPath != null && _privateKeyPath!.isNotEmpty) {
         _usePemKey = true;
+      }
+
+      if (widget.session!.notificationKeywords != null) {
+        try {
+          final List<dynamic> loaded = jsonDecode(
+            widget.session!.notificationKeywords!,
+          );
+          _keywords.addAll(loaded.cast<String>());
+        } catch (e) {
+          // ignore error
+        }
       }
     }
   }
@@ -65,7 +81,27 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
     _passwordController.dispose();
     _passphraseController.dispose();
     _smartTunnelPortsController.dispose();
+    _keywordController.dispose();
     super.dispose();
+  }
+
+  void _addKeyword() {
+    final text = _keywordController.text.trim();
+    if (text.isNotEmpty) {
+      final value = _isRegexInput ? 'r:$text' : text;
+      if (!_keywords.contains(value)) {
+        setState(() {
+          _keywords.add(value);
+          _keywordController.clear();
+        });
+      }
+    }
+  }
+
+  void _removeKeyword(int index) {
+    setState(() {
+      _keywords.removeAt(index);
+    });
   }
 
   Future<void> _pickPrivateKey() async {
@@ -120,7 +156,11 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
               : _smartTunnelPortsController.text,
         ),
         proxyJumpId: drift.Value(_proxyJumpId),
-        enableAgentForwarding: drift.Value(_enableAgentForwarding),
+        enableAgentForwarding: const drift.Value(false), // Always false
+
+        notificationKeywords: drift.Value(
+          _keywords.isEmpty ? null : jsonEncode(_keywords),
+        ),
       );
       await ref.read(sessionRepositoryProvider.notifier).upsert(session);
       if (mounted) {
@@ -302,6 +342,100 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 error: (err, stack) => Text('Error loading sessions: $err'),
               ),
               const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              // Keyword Notification Section
+              const Text(
+                'Notification Keywords',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text('Type: ', style: TextStyle(fontSize: 12)),
+                  Radio<bool>(
+                    value: false,
+                    groupValue: _isRegexInput,
+                    onChanged: (v) => setState(() => _isRegexInput = v!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const Text('Text', style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 8),
+                  Radio<bool>(
+                    value: true,
+                    groupValue: _isRegexInput,
+                    onChanged: (v) => setState(() => _isRegexInput = v!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const Text('Regex', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _keywordController,
+                      decoration: InputDecoration(
+                        labelText: 'Keyword',
+                        hintText: _isRegexInput
+                            ? 'e.g. error.*failed'
+                            : 'e.g. error',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon: Icon(
+                          _isRegexInput ? Icons.code : Icons.text_fields,
+                          size: 18,
+                        ),
+                      ),
+                      onSubmitted: (_) => _addKeyword(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _addKeyword,
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_keywords.isNotEmpty)
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  height: 150,
+                  child: ListView.separated(
+                    itemCount: _keywords.length,
+                    separatorBuilder: (c, i) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final rawKeyword = _keywords[index];
+                      final isRegex = rawKeyword.startsWith('r:');
+                      final displayKeyword = isRegex
+                          ? rawKeyword.substring(2)
+                          : rawKeyword;
+
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(
+                          isRegex ? Icons.code : Icons.text_fields,
+                          size: 16,
+                          color: isRegex ? Colors.orange : Colors.blue,
+                        ),
+                        title: Text(displayKeyword),
+                        subtitle: isRegex
+                            ? const Text(
+                                'Regex',
+                                style: TextStyle(fontSize: 10),
+                              )
+                            : null,
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          onPressed: () => _removeKeyword(index),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               const SizedBox(height: 16),
               const SizedBox(height: 16),
               const Text(

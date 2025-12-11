@@ -11,11 +11,16 @@ import 'package:stream_channel/stream_channel.dart';
 import '../../../core/database/database.dart';
 import '../domain/script_step.dart';
 import '../../session_recording/domain/session_recorder.dart';
+import '../../../core/services/notification_service.dart';
 
 class SSHService {
   final List<SSHClient> _clients = [];
   String _encoding = 'utf-8';
   final Map<int, ServerSocket> _activeForwards = {};
+
+  // Debounce map: Keyword -> Last Notification Time
+  final Map<String, DateTime> _lastNotificationTime = {};
+  static const Duration _notificationCooldown = Duration(seconds: 5);
 
   SSHClient? get _client => _clients.isNotEmpty ? _clients.last : null;
 
@@ -187,6 +192,12 @@ class SSHService {
         final decoded = await _decodeWithEncoding(data);
         terminal.write(decoded);
         _recorder?.write(decoded);
+
+        // Keyword monitoring
+        if (targetSessionData.notificationKeywords != null) {
+          // print('DEBUG: Checking keywords for chunk: "${decoded.replaceAll('\n', '\\n')}"');
+          _checkKeywords(decoded, targetSessionData);
+        }
       });
 
       shell.stderr.listen((data) async {
@@ -374,6 +385,69 @@ class SSHService {
       }
     } catch (e) {
       terminal.write('[Login script error: $e]\r\n');
+    }
+  }
+
+  void _checkKeywords(String text, Session session) {
+    if (session.notificationKeywords == null) return;
+
+    try {
+      final List<dynamic> keywordsInfo = jsonDecode(
+        session.notificationKeywords!,
+      );
+      // print('DEBUG: Loaded keys: $keywordsInfo');
+
+      for (final keyword in keywordsInfo) {
+        if (keyword is! String) continue;
+
+        bool matched = false;
+
+        if (keyword.startsWith('r:')) {
+          // Regex match
+          try {
+            final pattern = keyword.substring(2);
+            final regex = RegExp(pattern);
+            if (regex.hasMatch(text)) {
+              print('DEBUG: Regex matched: $pattern');
+              matched = true;
+            }
+          } catch (e) {
+            print('Invalid regex keyword: $keyword');
+          }
+        } else {
+          // Simple string match
+          if (text.contains(keyword)) {
+            print('DEBUG: String matched: $keyword');
+            matched = true;
+          }
+        }
+
+        if (matched) {
+          _triggerNotification(session, keyword);
+        }
+      }
+    } catch (e) {
+      print('Error checking keywords: $e');
+    }
+  }
+
+  void _triggerNotification(Session session, String keyword) {
+    print('DEBUG: Triggering notification for $keyword');
+    final now = DateTime.now();
+    final lastTime = _lastNotificationTime[keyword];
+
+    if (lastTime == null || now.difference(lastTime) > _notificationCooldown) {
+      _lastNotificationTime[keyword] = now;
+
+      print('DEBUG: Notification cooldown passed. Showing notification.');
+      NotificationService().showNotification(
+        id: session.id + keyword.hashCode, // Unique ID per session+keyword
+        title: 'Keyword Detect: ${session.name}',
+        body: 'Found "$keyword" in terminal output.',
+        payload: session.id.toString(),
+      );
+    } else {
+      print('DEBUG: Notification skipped due to cooldown.');
     }
   }
 }

@@ -22,6 +22,8 @@ class Sessions extends Table {
   IntColumn get proxyJumpId => integer().nullable().references(Sessions, #id)();
   BoolColumn get enableAgentForwarding =>
       boolean().withDefault(const Constant(false))();
+  TextColumn get notificationKeywords =>
+      text().nullable()(); // JSON list of strings/regex
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
