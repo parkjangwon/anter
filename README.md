@@ -13,6 +13,7 @@ Anter is a modern, cross-platform SSH client built with Flutter, designed for de
 - **Tab Management:** Efficiently manage multiple SSH sessions with a browser-like tab system.
 - **Split View:** Support for split-pane terminal views for multitasking.
 - **Virtual Key Toolbar:** (Mobile) Quick access to Esc, Tab, Arrows, and Ctrl modifiers on Android/iOS.
+- **Custom Button Bar:** Create custom buttons for frequently used commands for one-touch execution.
 
 ### 2. Session Recording & Playback 🎥
 
@@ -41,6 +42,11 @@ Anter is a modern, cross-platform SSH client built with Flutter, designed for de
 - **Smart Tunneling:** Easily set up port forwarding tunnels.
 - **ProxyJump (Gateway):** Connect to private servers securely via a bastion host/gateway.
 - **Keyword Notifications:** Get mobile alerts when specific keywords (e.g., "error", "done") appear in the terminal output.
+- **Keep Alive:** Periodically sends signals to keep the session alive even during inactivity.
+
+### 6. Security & Privacy 🔒
+
+- **App Lock:** Secure your app with Biometric Authentication (FaceID/TouchID) or PIN to protect sensitive server data.
 
 ## Getting Started
 
