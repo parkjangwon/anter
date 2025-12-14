@@ -6,6 +6,7 @@ import '../../../settings/presentation/settings_provider.dart';
 import '../../../settings/domain/settings_state.dart';
 import '../../../settings/domain/shortcut_intents.dart';
 import '../../../../core/theme/terminal_themes.dart' as app_theme;
+import '../../application/terminal_input_handler.dart';
 import 'dart:io';
 import 'virtual_key_toolbar.dart';
 
@@ -29,6 +30,8 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
     with AutomaticKeepAliveClientMixin {
   late FocusNode _internalFocusNode;
   Function(String)? _originalOnOutput;
+  bool _isCtrlPressed = false;
+  bool _isAltPressed = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -42,17 +45,36 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
       _internalFocusNode.requestFocus();
     }
 
-    _setupSafetyGuard();
+    _setupOutputInterception();
   }
 
-  void _setupSafetyGuard() {
+  void _setupOutputInterception() {
     // Preserve existing handler (from SSHService or LocalTerminalService)
     _originalOnOutput = widget.terminal.onOutput;
 
-    // Wrap with safety logic
+    // Wrap with safety logic and Input Transformation
     widget.terminal.onOutput = (input) async {
-      // Command Interception Logic for Production Servers
-      if (widget.safetyLevel == 2 && (input == '\r' || input == '\n')) {
+      // 1. Transform Input if modifiers are active
+      String effectiveInput = input;
+      if (_isCtrlPressed || _isAltPressed) {
+        effectiveInput = KeyModifierHandler.transformInput(
+          input,
+          isCtrl: _isCtrlPressed,
+          isAlt: _isAltPressed,
+        );
+
+        // Reset modifiers (One-shot behavior)
+        if (mounted) {
+          setState(() {
+            _isCtrlPressed = false;
+            _isAltPressed = false;
+          });
+        }
+      }
+
+      // 2. Command Interception Logic for Production Servers
+      if (widget.safetyLevel == 2 &&
+          (effectiveInput == '\r' || effectiveInput == '\n')) {
         final currentLine = widget.terminal.buffer.currentLine.getText();
         final dangerousCommands = [
           'rm -rf',
@@ -84,7 +106,6 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
                 'You are about to execute a potentially destructive command on a PRODUCTION server.\n\nAre you sure you want to proceed?',
                 style: TextStyle(color: Colors.red),
               ),
-              // Doesn't apply to dialog directly usually but ok
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
@@ -105,8 +126,8 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
         }
       }
 
-      // Delegate to original handler
-      _originalOnOutput?.call(input);
+      // Delegate to original handler with transformed input
+      _originalOnOutput?.call(effectiveInput);
     };
   }
 
@@ -202,7 +223,14 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
                 ),
               ),
               if (Platform.isAndroid || Platform.isIOS)
-                VirtualKeyToolbar(terminal: widget.terminal),
+                VirtualKeyToolbar(
+                  terminal: widget.terminal,
+                  isCtrlPressed: _isCtrlPressed,
+                  isAltPressed: _isAltPressed,
+                  onCtrlToggle: (start) =>
+                      setState(() => _isCtrlPressed = start),
+                  onAltToggle: (start) => setState(() => _isAltPressed = start),
+                ),
             ],
           ),
         ),

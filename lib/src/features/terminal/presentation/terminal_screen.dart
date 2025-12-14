@@ -5,6 +5,7 @@ import 'package:anter/src/core/database/database.dart';
 import '../data/ssh_service.dart';
 import '../data/local_terminal_service.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../application/terminal_input_handler.dart';
 import 'web_view_sheet.dart';
 import 'dart:io';
 import 'widgets/virtual_key_toolbar.dart';
@@ -25,17 +26,55 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   final _localService = LocalTerminalService();
   late final FocusNode _focusNode;
 
+  bool _isCtrlPressed = false;
+  bool _isAltPressed = false;
+  Function(String)? _originalOnOutput;
+
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
     _terminal = Terminal(maxLines: 10000);
 
+    // Initialize connection and then setup interception
+    _initConnection();
+  }
+
+  Future<void> _initConnection() async {
     if (widget.session.host == 'local') {
-      _startLocal();
+      await _startLocal();
     } else {
-      _connectSSH();
+      await _connectSSH();
     }
+    _setupOutputInterception();
+  }
+
+  void _setupOutputInterception() {
+    // Preserve existing handler (from SSHService or LocalTerminalService)
+    _originalOnOutput = _terminal.onOutput;
+
+    // Wrap with Input Transformation
+    _terminal.onOutput = (input) {
+      String effectiveInput = input;
+      if (_isCtrlPressed || _isAltPressed) {
+        effectiveInput = KeyModifierHandler.transformInput(
+          input,
+          isCtrl: _isCtrlPressed,
+          isAlt: _isAltPressed,
+        );
+
+        // Reset modifiers (One-shot behavior)
+        if (mounted) {
+          setState(() {
+            _isCtrlPressed = false;
+            _isAltPressed = false;
+          });
+        }
+      }
+
+      // Delegate to original handler
+      _originalOnOutput?.call(effectiveInput);
+    };
   }
 
   Future<void> _startLocal() async {
@@ -98,7 +137,13 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
               ),
             ),
             if (Platform.isAndroid || Platform.isIOS)
-              VirtualKeyToolbar(terminal: _terminal),
+              VirtualKeyToolbar(
+                terminal: _terminal,
+                isCtrlPressed: _isCtrlPressed,
+                isAltPressed: _isAltPressed,
+                onCtrlToggle: (start) => setState(() => _isCtrlPressed = start),
+                onAltToggle: (start) => setState(() => _isAltPressed = start),
+              ),
           ],
         ),
       ),
