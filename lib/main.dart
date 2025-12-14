@@ -135,6 +135,9 @@ class _AnterAppState extends ConsumerState<AnterApp>
           case ShortcutAction.aiAssistant:
             shortcutsMap[activator] = const AiAssistantIntent();
             break;
+          case ShortcutAction.aiAnalysis:
+            shortcutsMap[activator] = const AiAnalysisIntent();
+            break;
         }
       }
     }

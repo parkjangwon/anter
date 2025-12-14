@@ -24,6 +24,7 @@ enum ShortcutAction {
     ShortcutCategory.application,
   ),
   aiAssistant('AI Assistant', 'ai-assistant', ShortcutCategory.application),
+  aiAnalysis('AI Analysis', 'ai-analysis', ShortcutCategory.application),
 
   // View
   zoomIn('Zoom In', 'zoom-in', ShortcutCategory.view),
@@ -107,6 +108,12 @@ enum ShortcutAction {
           meta: meta,
           control: control,
           shift: true,
+        );
+      case ShortcutAction.aiAnalysis:
+        return SingleActivator(
+          LogicalKeyboardKey.period,
+          meta: meta,
+          control: control,
         );
     }
   }

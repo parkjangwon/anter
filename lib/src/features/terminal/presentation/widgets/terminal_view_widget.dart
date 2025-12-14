@@ -5,6 +5,8 @@ import 'package:xterm/xterm.dart';
 import '../../../settings/presentation/settings_provider.dart';
 import '../../../settings/domain/settings_state.dart';
 import '../../../settings/domain/shortcut_intents.dart';
+import '../../../settings/presentation/shortcuts_provider.dart';
+import '../../../settings/domain/shortcut_action.dart';
 import '../../../../core/theme/terminal_themes.dart' as app_theme;
 import '../../application/terminal_input_handler.dart';
 import '../../../ai_assistant/presentation/ai_analysis_overlay.dart';
@@ -271,6 +273,36 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
       borderWidth = 3.0;
     }
 
+    final shortcutActivators = ref.watch(shortcutsProvider);
+
+    // Build effective shortcuts map
+    final Map<ShortcutActivator, Intent> effectiveShortcuts = {
+      const SingleActivator(LogicalKeyboardKey.tab, control: true):
+          const BlockTabIntent(),
+      const SingleActivator(LogicalKeyboardKey.tab, control: true, shift: true):
+          const BlockTabIntent(),
+    };
+
+    // Add shortcuts from provider
+    if (shortcutActivators.containsKey(ShortcutAction.aiAssistant)) {
+      for (final activator in shortcutActivators[ShortcutAction.aiAssistant]!) {
+        effectiveShortcuts[activator] = const AiAssistantIntent();
+      }
+    }
+
+    if (shortcutActivators.containsKey(ShortcutAction.aiAnalysis)) {
+      for (final activator in shortcutActivators[ShortcutAction.aiAnalysis]!) {
+        effectiveShortcuts[activator] = const AiAnalysisIntent();
+      }
+    }
+
+    if (shortcutActivators.containsKey(ShortcutAction.broadcastInput)) {
+      for (final activator
+          in shortcutActivators[ShortcutAction.broadcastInput]!) {
+        effectiveShortcuts[activator] = const BroadcastInputIntent();
+      }
+    }
+
     return Actions(
       actions: {
         ZoomInIntent: CallbackAction<ZoomInIntent>(
@@ -296,7 +328,7 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
           },
         ),
         BlockTabIntent: CallbackAction<BlockTabIntent>(onInvoke: (_) => null),
-        AiAssistantIntent: CallbackAction<AiAssistantIntent>(
+        AiAnalysisIntent: CallbackAction<AiAnalysisIntent>(
           onInvoke: (_) {
             _handleAiAnalysis();
             return null;
@@ -304,26 +336,7 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
         ),
       },
       child: Shortcuts(
-        shortcuts: {
-          const SingleActivator(LogicalKeyboardKey.tab, control: true):
-              const BlockTabIntent(),
-          const SingleActivator(
-            LogicalKeyboardKey.tab,
-            control: true,
-            shift: true,
-          ): const BlockTabIntent(),
-          // Desktop Shortcut for AI: Ctrl+Shift+I (or Cmd+Shift+I)
-          const SingleActivator(
-            LogicalKeyboardKey.keyI,
-            control: true,
-            shift: true,
-          ): const AiAssistantIntent(),
-          const SingleActivator(
-            LogicalKeyboardKey.keyI,
-            meta: true,
-            shift: true,
-          ): const AiAssistantIntent(),
-        },
+        shortcuts: effectiveShortcuts,
         child: Stack(
           children: [
             Container(

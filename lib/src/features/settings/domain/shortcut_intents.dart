@@ -43,3 +43,7 @@ class BroadcastInputIntent extends Intent {
 class AiAssistantIntent extends Intent {
   const AiAssistantIntent();
 }
+
+class AiAnalysisIntent extends Intent {
+  const AiAnalysisIntent();
+}

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 import 'package:anter/src/core/database/database.dart';
 import '../data/ssh_service.dart';
 import '../data/local_terminal_service.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../settings/presentation/shortcuts_provider.dart';
+import '../../settings/domain/shortcut_action.dart';
 import '../../settings/domain/shortcut_intents.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../application/terminal_input_handler.dart';
 import '../../ai_assistant/presentation/ai_analysis_overlay.dart';
 import 'web_view_sheet.dart';
@@ -115,6 +117,28 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final shortcutActivators = ref.watch(shortcutsProvider);
+    final Map<ShortcutActivator, Intent> effectiveShortcuts = {};
+
+    // Add shortcuts from provider
+    if (shortcutActivators.containsKey(ShortcutAction.aiAssistant)) {
+      for (final activator in shortcutActivators[ShortcutAction.aiAssistant]!) {
+        effectiveShortcuts[activator] = const AiAssistantIntent();
+      }
+    }
+
+    if (shortcutActivators.containsKey(ShortcutAction.aiAnalysis)) {
+      for (final activator in shortcutActivators[ShortcutAction.aiAnalysis]!) {
+        effectiveShortcuts[activator] = const AiAnalysisIntent();
+      }
+    }
+
+    if (shortcutActivators.containsKey(ShortcutAction.broadcastInput)) {
+      for (final activator
+          in shortcutActivators[ShortcutAction.broadcastInput]!) {
+        effectiveShortcuts[activator] = const BroadcastInputIntent();
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -125,12 +149,20 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             tooltip: 'Smart Tunnel & Web View',
             onPressed: _handleSmartTunnel,
           ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
         ],
       ),
       body: SafeArea(
         child: Actions(
           actions: {
-            AiAssistantIntent: CallbackAction<AiAssistantIntent>(
+            AiAnalysisIntent: CallbackAction<AiAnalysisIntent>(
               onInvoke: (_) {
                 _handleAiAnalysis();
                 return null;
@@ -138,19 +170,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             ),
           },
           child: Shortcuts(
-            shortcuts: {
-              // Desktop Shortcut for AI: Ctrl+Shift+I (or Cmd+Shift+I)
-              const SingleActivator(
-                LogicalKeyboardKey.keyI,
-                control: true,
-                shift: true,
-              ): const AiAssistantIntent(),
-              const SingleActivator(
-                LogicalKeyboardKey.keyI,
-                meta: true,
-                shift: true,
-              ): const AiAssistantIntent(),
-            },
+            shortcuts: effectiveShortcuts,
             child: Stack(
               children: [
                 Column(
