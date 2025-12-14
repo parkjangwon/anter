@@ -24,6 +24,8 @@ class Sessions extends Table {
       boolean().withDefault(const Constant(false))();
   TextColumn get notificationKeywords =>
       text().nullable()(); // JSON list of strings/regex
+  IntColumn get keepaliveInterval =>
+      integer().withDefault(const Constant(60))(); // Seconds, 0 to disable
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

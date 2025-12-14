@@ -63,6 +63,8 @@ class SSHService {
   final Map<String, DateTime> _lastNotificationTime = {};
   static const Duration _notificationCooldown = Duration(seconds: 5);
 
+  Timer? _keepaliveTimer;
+
   SSHClient? get _client => _clients.isNotEmpty ? _clients.last : null;
 
   Future<int> startForwarding({required int remotePort, int? localPort}) async {
@@ -280,6 +282,11 @@ class SSHService {
 
       print('SSHService: Setup complete');
 
+      // Start Keepalive if configured
+      if (targetSessionData.keepaliveInterval > 0) {
+        _startKeepalive(targetSessionData.keepaliveInterval);
+      }
+
       _handleSessionCompletion(shell, terminal);
     } catch (e) {
       print('SSHService: Error: $e');
@@ -331,6 +338,8 @@ class SSHService {
   }
 
   void dispose() {
+    _keepaliveTimer?.cancel();
+    _keepaliveTimer = null;
     for (final client in _clients.reversed) {
       client.close();
     }
@@ -448,5 +457,27 @@ class SSHService {
         payload: session.id.toString(),
       );
     }
+  }
+
+  void _startKeepalive(int intervalSeconds) {
+    _keepaliveTimer?.cancel();
+    _keepaliveTimer = Timer.periodic(Duration(seconds: intervalSeconds), (
+      timer,
+    ) async {
+      if (_client != null && !_client!.isClosed) {
+        try {
+          // Send SSH_MSG_IGNORE to keep connection alive
+          // Using dynamic cast as sendIgnore might not be statically resolved
+          // in the analyzer or current binding, but commonly available.
+          await (_client as dynamic).sendIgnore();
+          // print('SSHService: Sent Keepalive (SSH_MSG_IGNORE)');
+        } catch (e) {
+          print('SSHService: Keepalive error: $e');
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+    print('SSHService: Keepalive started (interval: ${intervalSeconds}s)');
   }
 }

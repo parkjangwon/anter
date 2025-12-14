@@ -16,7 +16,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -50,6 +50,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 8) {
           // Add notificationKeywords column
           await migrator.addColumn(sessions, sessions.notificationKeywords);
+        }
+        if (from < 9) {
+          // Add keepaliveInterval column
+          await migrator.addColumn(sessions, sessions.keepaliveInterval);
         }
       },
     );

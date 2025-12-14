@@ -42,6 +42,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   bool _isRegexInput = false;
   final _keywordController = TextEditingController();
 
+  final _keepaliveController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +60,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       _smartTunnelPortsController.text = widget.session!.smartTunnelPorts ?? '';
       _proxyJumpId = widget.session!.proxyJumpId;
       // _enableAgentForwarding = widget.session!.enableAgentForwarding; // Removed
+
+      _keepaliveController.text = widget.session!.keepaliveInterval!.toString();
 
       if (_privateKeyPath != null && _privateKeyPath!.isNotEmpty) {
         _usePemKey = true;
@@ -98,6 +102,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
     _passphraseController.dispose();
     _smartTunnelPortsController.dispose();
     _keywordController.dispose();
+    _keepaliveController.dispose();
     super.dispose();
   }
 
@@ -173,6 +178,10 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
         ),
         proxyJumpId: drift.Value(_proxyJumpId),
         enableAgentForwarding: const drift.Value(false), // Always false
+
+        keepaliveInterval: drift.Value(
+          int.tryParse(_keepaliveController.text) ?? 60,
+        ),
 
         notificationKeywords: drift.Value(
           _keywords.isEmpty ? null : jsonEncode(_keywords),
@@ -514,6 +523,25 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 error: (err, stack) => Text('Error loading sessions: $err'),
               ),
               const SizedBox(height: 12),
+              TextFormField(
+                controller: _keepaliveController,
+                decoration: const InputDecoration(
+                  labelText: 'Keepalive Interval (seconds)',
+                  helperText: 'Send empty packet periodically (0 = disabled)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    // Empty is fine, default to 60 or allow 0
+                    return null;
+                  }
+                  if (int.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 16),
               // Keyword Notification Section
               const Text(

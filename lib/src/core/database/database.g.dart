@@ -549,6 +549,18 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _keepaliveIntervalMeta = const VerificationMeta(
+    'keepaliveInterval',
+  );
+  @override
+  late final GeneratedColumn<int> keepaliveInterval = GeneratedColumn<int>(
+    'keepalive_interval',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(60),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -592,6 +604,7 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     proxyJumpId,
     enableAgentForwarding,
     notificationKeywords,
+    keepaliveInterval,
     createdAt,
     updatedAt,
   ];
@@ -736,6 +749,15 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('keepalive_interval')) {
+      context.handle(
+        _keepaliveIntervalMeta,
+        keepaliveInterval.isAcceptableOrUnknown(
+          data['keepalive_interval']!,
+          _keepaliveIntervalMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -825,6 +847,10 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.string,
         data['${effectivePrefix}notification_keywords'],
       ),
+      keepaliveInterval: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}keepalive_interval'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -860,6 +886,7 @@ class Session extends DataClass implements Insertable<Session> {
   final int? proxyJumpId;
   final bool enableAgentForwarding;
   final String? notificationKeywords;
+  final int keepaliveInterval;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Session({
@@ -880,6 +907,7 @@ class Session extends DataClass implements Insertable<Session> {
     this.proxyJumpId,
     required this.enableAgentForwarding,
     this.notificationKeywords,
+    required this.keepaliveInterval,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -921,6 +949,7 @@ class Session extends DataClass implements Insertable<Session> {
     if (!nullToAbsent || notificationKeywords != null) {
       map['notification_keywords'] = Variable<String>(notificationKeywords);
     }
+    map['keepalive_interval'] = Variable<int>(keepaliveInterval);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -961,6 +990,7 @@ class Session extends DataClass implements Insertable<Session> {
       notificationKeywords: notificationKeywords == null && nullToAbsent
           ? const Value.absent()
           : Value(notificationKeywords),
+      keepaliveInterval: Value(keepaliveInterval),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -993,6 +1023,7 @@ class Session extends DataClass implements Insertable<Session> {
       notificationKeywords: serializer.fromJson<String?>(
         json['notificationKeywords'],
       ),
+      keepaliveInterval: serializer.fromJson<int>(json['keepaliveInterval']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1018,6 +1049,7 @@ class Session extends DataClass implements Insertable<Session> {
       'proxyJumpId': serializer.toJson<int?>(proxyJumpId),
       'enableAgentForwarding': serializer.toJson<bool>(enableAgentForwarding),
       'notificationKeywords': serializer.toJson<String?>(notificationKeywords),
+      'keepaliveInterval': serializer.toJson<int>(keepaliveInterval),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1041,6 +1073,7 @@ class Session extends DataClass implements Insertable<Session> {
     Value<int?> proxyJumpId = const Value.absent(),
     bool? enableAgentForwarding,
     Value<String?> notificationKeywords = const Value.absent(),
+    int? keepaliveInterval,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -1067,6 +1100,7 @@ class Session extends DataClass implements Insertable<Session> {
     notificationKeywords: notificationKeywords.present
         ? notificationKeywords.value
         : this.notificationKeywords,
+    keepaliveInterval: keepaliveInterval ?? this.keepaliveInterval,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1107,6 +1141,9 @@ class Session extends DataClass implements Insertable<Session> {
       notificationKeywords: data.notificationKeywords.present
           ? data.notificationKeywords.value
           : this.notificationKeywords,
+      keepaliveInterval: data.keepaliveInterval.present
+          ? data.keepaliveInterval.value
+          : this.keepaliveInterval,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1132,6 +1169,7 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('proxyJumpId: $proxyJumpId, ')
           ..write('enableAgentForwarding: $enableAgentForwarding, ')
           ..write('notificationKeywords: $notificationKeywords, ')
+          ..write('keepaliveInterval: $keepaliveInterval, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1157,6 +1195,7 @@ class Session extends DataClass implements Insertable<Session> {
     proxyJumpId,
     enableAgentForwarding,
     notificationKeywords,
+    keepaliveInterval,
     createdAt,
     updatedAt,
   );
@@ -1181,6 +1220,7 @@ class Session extends DataClass implements Insertable<Session> {
           other.proxyJumpId == this.proxyJumpId &&
           other.enableAgentForwarding == this.enableAgentForwarding &&
           other.notificationKeywords == this.notificationKeywords &&
+          other.keepaliveInterval == this.keepaliveInterval &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1203,6 +1243,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<int?> proxyJumpId;
   final Value<bool> enableAgentForwarding;
   final Value<String?> notificationKeywords;
+  final Value<int> keepaliveInterval;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SessionsCompanion({
@@ -1223,6 +1264,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.proxyJumpId = const Value.absent(),
     this.enableAgentForwarding = const Value.absent(),
     this.notificationKeywords = const Value.absent(),
+    this.keepaliveInterval = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1244,6 +1286,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.proxyJumpId = const Value.absent(),
     this.enableAgentForwarding = const Value.absent(),
     this.notificationKeywords = const Value.absent(),
+    this.keepaliveInterval = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -1267,6 +1310,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<int>? proxyJumpId,
     Expression<bool>? enableAgentForwarding,
     Expression<String>? notificationKeywords,
+    Expression<int>? keepaliveInterval,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1291,6 +1335,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
         'enable_agent_forwarding': enableAgentForwarding,
       if (notificationKeywords != null)
         'notification_keywords': notificationKeywords,
+      if (keepaliveInterval != null) 'keepalive_interval': keepaliveInterval,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1314,6 +1359,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<int?>? proxyJumpId,
     Value<bool>? enableAgentForwarding,
     Value<String?>? notificationKeywords,
+    Value<int>? keepaliveInterval,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1336,6 +1382,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       enableAgentForwarding:
           enableAgentForwarding ?? this.enableAgentForwarding,
       notificationKeywords: notificationKeywords ?? this.notificationKeywords,
+      keepaliveInterval: keepaliveInterval ?? this.keepaliveInterval,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1399,6 +1446,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
         notificationKeywords.value,
       );
     }
+    if (keepaliveInterval.present) {
+      map['keepalive_interval'] = Variable<int>(keepaliveInterval.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1428,6 +1478,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('proxyJumpId: $proxyJumpId, ')
           ..write('enableAgentForwarding: $enableAgentForwarding, ')
           ..write('notificationKeywords: $notificationKeywords, ')
+          ..write('keepaliveInterval: $keepaliveInterval, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2209,6 +2260,7 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<int?> proxyJumpId,
       Value<bool> enableAgentForwarding,
       Value<String?> notificationKeywords,
+      Value<int> keepaliveInterval,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2231,6 +2283,7 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<int?> proxyJumpId,
       Value<bool> enableAgentForwarding,
       Value<String?> notificationKeywords,
+      Value<int> keepaliveInterval,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2382,6 +2435,11 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<String> get notificationKeywords => $composableBuilder(
     column: $table.notificationKeywords,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get keepaliveInterval => $composableBuilder(
+    column: $table.keepaliveInterval,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2551,6 +2609,11 @@ class $$SessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get keepaliveInterval => $composableBuilder(
+    column: $table.keepaliveInterval,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2675,6 +2738,11 @@ class $$SessionsTableAnnotationComposer
 
   GeneratedColumn<String> get notificationKeywords => $composableBuilder(
     column: $table.notificationKeywords,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get keepaliveInterval => $composableBuilder(
+    column: $table.keepaliveInterval,
     builder: (column) => column,
   );
 
@@ -2806,6 +2874,7 @@ class $$SessionsTableTableManager
                 Value<int?> proxyJumpId = const Value.absent(),
                 Value<bool> enableAgentForwarding = const Value.absent(),
                 Value<String?> notificationKeywords = const Value.absent(),
+                Value<int> keepaliveInterval = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion(
@@ -2826,6 +2895,7 @@ class $$SessionsTableTableManager
                 proxyJumpId: proxyJumpId,
                 enableAgentForwarding: enableAgentForwarding,
                 notificationKeywords: notificationKeywords,
+                keepaliveInterval: keepaliveInterval,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2848,6 +2918,7 @@ class $$SessionsTableTableManager
                 Value<int?> proxyJumpId = const Value.absent(),
                 Value<bool> enableAgentForwarding = const Value.absent(),
                 Value<String?> notificationKeywords = const Value.absent(),
+                Value<int> keepaliveInterval = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion.insert(
@@ -2868,6 +2939,7 @@ class $$SessionsTableTableManager
                 proxyJumpId: proxyJumpId,
                 enableAgentForwarding: enableAgentForwarding,
                 notificationKeywords: notificationKeywords,
+                keepaliveInterval: keepaliveInterval,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
