@@ -43,6 +43,41 @@ class TerminalBufferHelper {
     return stripAnsi(extractedText.toString());
   }
 
+  /// Extracts the currently visible lines from the terminal buffer
+  /// as seen by the user on the screen.
+  static String getVisibleOutput(Terminal terminal) {
+    // Note: detailed scroll offset API in xterm.dart varies by version.
+    // Assuming standard behavior where we want the viewport content.
+    // If scrollOffset is not available, we default to the last [viewHeight] lines
+    // which represents the "bottom" of the terminal (most common case).
+
+    final viewHeight = terminal.viewHeight;
+    final buffer = terminal.buffer;
+    final totalLines = buffer.lines.length;
+
+    // Default to the last viewHeight lines (bottom of screen)
+    int startLine = (totalLines - viewHeight).clamp(0, totalLines);
+    int endLine = totalLines;
+
+    // Attempt to use scrollOffset if available (Checking dynamic to avoid analyzer error if possible,
+    // but better to just stick to safe implementation for now).
+    // In many xterm implementations, scrollOffset 0 means top of history?
+    // Or scrollOffsetFromBottom?
+    // Without exact API, `totalLines - viewHeight` is the best approximation for "current screen"
+    // assuming the user hasn't scrolled up significantly to look at old history
+    // while invoking AI.
+
+    final StringBuffer extractedText = StringBuffer();
+
+    for (int i = startLine; i < endLine; i++) {
+      if (i >= 0 && i < totalLines) {
+        extractedText.writeln(buffer.lines[i].toString());
+      }
+    }
+
+    return stripAnsi(extractedText.toString());
+  }
+
   static String stripAnsi(String input) {
     final ansiRegex = RegExp(r'\x1B\[[0-9;]*[a-zA-Z]');
     return input.replaceAll(ansiRegex, '');

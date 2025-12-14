@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 import 'package:anter/src/core/database/database.dart';
 import '../data/ssh_service.dart';
 import '../data/local_terminal_service.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../settings/domain/shortcut_intents.dart';
 import '../application/terminal_input_handler.dart';
+import '../../ai_assistant/presentation/ai_analysis_overlay.dart';
 import 'web_view_sheet.dart';
 import 'dart:io';
 import 'widgets/virtual_key_toolbar.dart';
@@ -28,6 +31,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
   bool _isCtrlPressed = false;
   bool _isAltPressed = false;
+  bool _showAiOverlay = false;
   Function(String)? _originalOnOutput;
 
   @override
@@ -88,6 +92,12 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     await _sshService.connect(hops: [widget.session], terminal: _terminal);
   }
 
+  void _handleAiAnalysis() {
+    setState(() {
+      _showAiOverlay = true;
+    });
+  }
+
   @override
   void dispose() {
     _focusNode.dispose();
@@ -112,39 +122,76 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: TerminalView(
-                _terminal,
-                controller: _terminalController,
-                textStyle: TerminalStyle(
-                  fontSize: settings.fontSize,
-                  fontFamily: settings.fontFamily,
-                ),
-                autofocus: true,
-                focusNode: _focusNode,
-                backgroundOpacity: 0.9,
-                onSecondaryTapDown: (details, offset) async {
-                  final selection = _terminalController.selection;
-                  if (selection != null) {
-                    _terminalController.clearSelection();
-                    // TODO: Copy to clipboard
-                  } else {
-                    // TODO: Paste from clipboard
-                  }
-                },
-              ),
+        child: Actions(
+          actions: {
+            AiAssistantIntent: CallbackAction<AiAssistantIntent>(
+              onInvoke: (_) {
+                _handleAiAnalysis();
+                return null;
+              },
             ),
-            if (Platform.isAndroid || Platform.isIOS)
-              VirtualKeyToolbar(
-                terminal: _terminal,
-                isCtrlPressed: _isCtrlPressed,
-                isAltPressed: _isAltPressed,
-                onCtrlToggle: (start) => setState(() => _isCtrlPressed = start),
-                onAltToggle: (start) => setState(() => _isAltPressed = start),
-              ),
-          ],
+          },
+          child: Shortcuts(
+            shortcuts: {
+              // Desktop Shortcut for AI: Ctrl+Shift+I (or Cmd+Shift+I)
+              const SingleActivator(
+                LogicalKeyboardKey.keyI,
+                control: true,
+                shift: true,
+              ): const AiAssistantIntent(),
+              const SingleActivator(
+                LogicalKeyboardKey.keyI,
+                meta: true,
+                shift: true,
+              ): const AiAssistantIntent(),
+            },
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    Expanded(
+                      child: TerminalView(
+                        _terminal,
+                        controller: _terminalController,
+                        textStyle: TerminalStyle(
+                          fontSize: settings.fontSize,
+                          fontFamily: settings.fontFamily,
+                        ),
+                        autofocus: true,
+                        focusNode: _focusNode,
+                        backgroundOpacity: 0.9,
+                        onSecondaryTapDown: (details, offset) async {
+                          final selection = _terminalController.selection;
+                          if (selection != null) {
+                            _terminalController.clearSelection();
+                            // TODO: Copy to clipboard
+                          } else {
+                            // TODO: Paste from clipboard
+                          }
+                        },
+                      ),
+                    ),
+                    if (Platform.isAndroid || Platform.isIOS)
+                      VirtualKeyToolbar(
+                        terminal: _terminal,
+                        isCtrlPressed: _isCtrlPressed,
+                        isAltPressed: _isAltPressed,
+                        onCtrlToggle: (start) =>
+                            setState(() => _isCtrlPressed = start),
+                        onAltToggle: (start) =>
+                            setState(() => _isAltPressed = start),
+                        onAiHelp: _handleAiAnalysis,
+                      ),
+                  ],
+                ),
+                if (_showAiOverlay)
+                  AIAnalysisOverlay(
+                    terminal: _terminal,
+                    onClose: () => setState(() => _showAiOverlay = false),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

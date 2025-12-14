@@ -62,6 +62,7 @@ dependencies:
   archive: ^4.0.7
 
   flutter_local_notifications: ^19.5.0
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:

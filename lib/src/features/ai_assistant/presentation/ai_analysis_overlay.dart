@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
+import 'package:markdown/markdown.dart' as md;
 import '../application/gemini_analysis_service.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../terminal/application/terminal_buffer_helper.dart';
@@ -61,7 +62,7 @@ class _AIAnalysisOverlayState extends ConsumerState<AIAnalysisOverlay>
     final service = ref.read(aiAnalysisProvider);
     final contextText =
         widget.selectedText ??
-        TerminalBufferHelper.getSanitizedOutput(widget.terminal, lineCount: 50);
+        TerminalBufferHelper.getVisibleOutput(widget.terminal);
 
     final result = await service.analyzeTerminalOutput(contextText);
 
@@ -257,17 +258,14 @@ class CodeElementBuilder extends MarkdownElementBuilder {
   CodeElementBuilder(this.onCopy, this.onRun);
 
   @override
-  Widget? visitText(MarkdownText text, TextStyle? preferredStyle) {
+  Widget? visitText(md.Text text, TextStyle? preferredStyle) {
     // This is tricky with MarkdownBody, simpler to just detect single-line commands
     // But for blocks, visitElement is better.
     return null;
   }
 
   @override
-  Widget? visitElementAfter(
-    MarkdownElement element,
-    TextStyle? preferredStyle,
-  ) {
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     // Only target code blocks (not inline code) if possible,
     // but Markdown package generic 'code' tag handles both often.
     // Let's wrapping the text with action buttons.

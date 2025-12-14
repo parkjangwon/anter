@@ -1,5 +1,6 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../settings/domain/settings_state.dart';
+import 'dart:io';
 
 class GeminiAnalysisService {
   final String apiKey;
@@ -10,7 +11,7 @@ class GeminiAnalysisService {
   /// Analyzes the terminal output and provides a structured response.
   Future<String> analyzeTerminalOutput(String terminalContext) async {
     if (apiKey.isEmpty) {
-      return "⚠️ **오류**: Gemini API 키가 설정되지 않았습니다.\n설정(Settings) 메뉴 > AI Assistant 탭에서 API 키를 입력해주세요.";
+      return "⚠️ **Error**: Gemini API Key is not set.\nPlease set it in Settings > AI Assistant.";
     }
 
     try {
@@ -18,6 +19,16 @@ class GeminiAnalysisService {
         model: model.modelId,
         apiKey: apiKey,
       );
+
+      final String systemLocale = Platform.localeName; // e.g., 'en_US', 'ko_KR'
+      String languageInstruction = 'English';
+      if (systemLocale.startsWith('ko')) {
+        languageInstruction = 'KOREAN';
+      } else if (systemLocale.startsWith('ja')) {
+        languageInstruction = 'JAPANESE';
+      } else if (systemLocale.startsWith('zh')) {
+        languageInstruction = 'CHINESE';
+      }
 
       final prompt =
           '''
@@ -30,33 +41,36 @@ $terminalContext
 """
 
 Instructions:
-1. **Identify**: Briefly explain what is happening or what the error is.
+1. **Focus**: Identify the **LAST executed command** and its result (usually at the bottom of the output).
+    - If the last command failed, analyze the error.
+    - If the last command succeeded, summarize the result.
+    - If the last command is not visible or clear, analyze the general visible text for any issues or status.
+    - **Ignore** previous command outputs unless they provide necessary context for the last command.
 2. **Analysis**:
-    - If it's an error, identify the root cause.
-    - If it's a status check (e.g., free, df), summarize the health status.
+    - Identify what happened.
+    - Determine the root cause (if error).
 3. **Solution**: Provide the *exact* command to fix the issue or the next recommended step.
     - Wrap the recommended command in a code block like `command`.
-    - If there are multiple steps, number them.
 4. **Tone**: Professional, Concise, Helpful.
-5. **Language**: **KOREAN** (Translate everything to Korean).
+5. **Language**: **$languageInstruction** (Translate everything to $languageInstruction).
 
 Output Format (Markdown):
-## 🔍 분석 (Analysis)
-<Brief explanation>
+## 🔍 Analysis
+<Focus on the last command's result>
 
-## 🛠️ 해결 방법 (Solution)
+## 🛠️ Solution
 <Detailed solution or next steps>
 
-## 💡 추천 명령어 (Action)
+## 💡 Recommended Action
 `<command>`
 ''';
 
       final content = [Content.text(prompt)];
       final response = await generativModel.generateContent(content);
 
-      return response.text ?? "⚠️ **오류**: AI로부터 응답을 받지 못했습니다.";
+      return response.text ?? "⚠️ **Error**: No response from AI.";
     } catch (e) {
-      return "⚠️ **오류 발생**: AI 분석 중 문제가 발생했습니다.\nError: $e";
+      return "⚠️ **Error**: AI Analysis failed.\nError: $e";
     }
   }
 }

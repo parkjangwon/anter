@@ -7,6 +7,7 @@ import '../../../settings/domain/settings_state.dart';
 import '../../../settings/domain/shortcut_intents.dart';
 import '../../../../core/theme/terminal_themes.dart' as app_theme;
 import '../../application/terminal_input_handler.dart';
+import '../../../ai_assistant/presentation/ai_analysis_overlay.dart';
 import 'dart:io';
 import 'virtual_key_toolbar.dart';
 
@@ -32,6 +33,7 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
   Function(String)? _originalOnOutput;
   bool _isCtrlPressed = false;
   bool _isAltPressed = false;
+  bool _showAiOverlay = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -131,6 +133,12 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
     };
   }
 
+  void _handleAiAnalysis() {
+    setState(() {
+      _showAiOverlay = true;
+    });
+  }
+
   @override
   void dispose() {
     // Restore original handler to avoid side effects if terminal is reused (unlikely but safe)
@@ -189,6 +197,12 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
           },
         ),
         BlockTabIntent: CallbackAction<BlockTabIntent>(onInvoke: (_) => null),
+        AiAssistantIntent: CallbackAction<AiAssistantIntent>(
+          onInvoke: (_) {
+            _handleAiAnalysis();
+            return null;
+          },
+        ),
       },
       child: Shortcuts(
         shortcuts: {
@@ -199,40 +213,62 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
             control: true,
             shift: true,
           ): const BlockTabIntent(),
+          // Desktop Shortcut for AI: Ctrl+Shift+I (or Cmd+Shift+I)
+          const SingleActivator(
+            LogicalKeyboardKey.keyI,
+            control: true,
+            shift: true,
+          ): const AiAssistantIntent(),
+          const SingleActivator(
+            LogicalKeyboardKey.keyI,
+            meta: true,
+            shift: true,
+          ): const AiAssistantIntent(),
         },
-        child: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            border: borderColor != null
-                ? Border.all(color: borderColor, width: borderWidth)
-                : null,
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: TerminalView(
-                  widget.terminal,
-                  textStyle: TerminalStyle(
-                    fontSize: settings.fontSize,
-                    fontFamily: settings.fontFamily,
-                  ),
-                  autofocus: true,
-                  focusNode: _internalFocusNode,
-                  backgroundOpacity: 0, // Ensure background shows through
-                  theme: _getTerminalTheme(settings.colorScheme),
-                ),
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                border: borderColor != null
+                    ? Border.all(color: borderColor, width: borderWidth)
+                    : null,
               ),
-              if (Platform.isAndroid || Platform.isIOS)
-                VirtualKeyToolbar(
-                  terminal: widget.terminal,
-                  isCtrlPressed: _isCtrlPressed,
-                  isAltPressed: _isAltPressed,
-                  onCtrlToggle: (start) =>
-                      setState(() => _isCtrlPressed = start),
-                  onAltToggle: (start) => setState(() => _isAltPressed = start),
-                ),
-            ],
-          ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: TerminalView(
+                      widget.terminal,
+                      textStyle: TerminalStyle(
+                        fontSize: settings.fontSize,
+                        fontFamily: settings.fontFamily,
+                      ),
+                      autofocus: true,
+                      focusNode: _internalFocusNode,
+                      backgroundOpacity: 0, // Ensure background shows through
+                      theme: _getTerminalTheme(settings.colorScheme),
+                    ),
+                  ),
+                  if (Platform.isAndroid || Platform.isIOS)
+                    VirtualKeyToolbar(
+                      terminal: widget.terminal,
+                      isCtrlPressed: _isCtrlPressed,
+                      isAltPressed: _isAltPressed,
+                      onCtrlToggle: (start) =>
+                          setState(() => _isCtrlPressed = start),
+                      onAltToggle: (start) =>
+                          setState(() => _isAltPressed = start),
+                      onAiHelp: _handleAiAnalysis,
+                    ),
+                ],
+              ),
+            ),
+            if (_showAiOverlay)
+              AIAnalysisOverlay(
+                terminal: widget.terminal,
+                onClose: () => setState(() => _showAiOverlay = false),
+              ),
+          ],
         ),
       ),
     );

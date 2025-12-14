@@ -8,6 +8,7 @@ class VirtualKeyToolbar extends StatelessWidget {
   final bool isAltPressed;
   final ValueChanged<bool> onCtrlToggle;
   final ValueChanged<bool> onAltToggle;
+  final VoidCallback? onAiHelp;
 
   const VirtualKeyToolbar({
     super.key,
@@ -16,6 +17,7 @@ class VirtualKeyToolbar extends StatelessWidget {
     required this.isAltPressed,
     required this.onCtrlToggle,
     required this.onAltToggle,
+    this.onAiHelp,
   });
 
   @override
@@ -51,6 +53,15 @@ class VirtualKeyToolbar extends StatelessWidget {
             isActive: isAltPressed,
             onTap: () => onAltToggle(!isAltPressed),
           ),
+          // AI Help Button
+          if (onAiHelp != null) ...[
+            const VerticalDivider(width: 8, indent: 8, endIndent: 8),
+            _VirtualKey(
+              icon: Icons.auto_awesome,
+              onTap: onAiHelp!,
+              isActive: false, // Or define a separate style if needed
+            ),
+          ],
           const VerticalDivider(width: 8, indent: 8, endIndent: 8),
           _VirtualKey(
             icon: Icons.arrow_upward,
