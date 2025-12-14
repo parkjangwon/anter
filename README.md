@@ -23,7 +23,8 @@ Anter is a modern, cross-platform SSH client built with Flutter, designed for de
 ### 3. AI Assistant (Gemini) 🤖
 
 - **Smart Command Generation:** Integrated Google Gemini AI to generate Linux commands from natural language queries.
-- **Context-Aware:** Ask questions like "Check disk space" or "Find large files" and get the exact command to run.
+- **Screen Analysis & Troubleshooting:** Analyze your current terminal screen to identify errors and get instant solutions.
+- **Context-Aware:** Ask questions like "Check disk space" or "Find large files", or simply press `Ctrl+Shift+I` to analyze the visible output.
 - **Safe Execution:** Generated commands are presented for review before execution.
 
 ### 4. Backup & Restore ☁️
