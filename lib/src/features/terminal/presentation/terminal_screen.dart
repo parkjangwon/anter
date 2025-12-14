@@ -12,6 +12,7 @@ import '../../ai_assistant/presentation/ai_analysis_overlay.dart';
 import 'web_view_sheet.dart';
 import 'dart:io';
 import 'widgets/virtual_key_toolbar.dart';
+import 'widgets/button_bar_widget.dart';
 
 class TerminalScreen extends ConsumerStatefulWidget {
   final Session session;
@@ -74,6 +75,11 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             _isAltPressed = false;
           });
         }
+      }
+
+      // Backspace Compatibility (Replace DEL \x7f with BS \x08 if mode == 1)
+      if (widget.session.backspaceMode == 1) {
+        effectiveInput = effectiveInput.replaceAll('\x7f', '\x08');
       }
 
       // Delegate to original handler
@@ -170,6 +176,9 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                           }
                         },
                       ),
+                    ),
+                    ButtonBarWidget(
+                      onCommand: (cmd) => _terminal.onOutput?.call(cmd),
                     ),
                     if (Platform.isAndroid || Platform.isIOS)
                       VirtualKeyToolbar(

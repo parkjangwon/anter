@@ -25,7 +25,25 @@ class BackupService {
       final shortcutsJson = prefs.getString('app_shortcuts');
 
       final sessions = await ref.read(sessionRepositoryProvider.future);
-      final sessionsJson = sessions.map((s) => s.toJson()).toList();
+
+      // Fetch commands
+      final db = ref.read(databaseProvider);
+      final allCommands = await db.select(db.sessionCommands).get();
+
+      // Group commands by session ID
+      final commandsBySession = <int, List<SessionCommand>>{};
+      for (final cmd in allCommands) {
+        commandsBySession.putIfAbsent(cmd.sessionId, () => []).add(cmd);
+      }
+
+      final sessionsJson = sessions.map((s) {
+        final json = s.toJson();
+        final cmds = commandsBySession[s.id];
+        if (cmds != null) {
+          json['commands'] = cmds.map((c) => c.toJson()).toList();
+        }
+        return json;
+      }).toList();
 
       final backupData = {
         'version': 1,
@@ -120,7 +138,8 @@ class BackupService {
           final currentSessions = await db.select(db.sessions).get();
 
           for (final s in sessionsList) {
-            final sessionData = Session.fromJson(s as Map<String, dynamic>);
+            final sessionMap = s as Map<String, dynamic>;
+            final sessionData = Session.fromJson(sessionMap);
 
             // Check for duplicate (same host, port, username)
             // Note: We skip 'password' check as it might be changed/empty
@@ -161,9 +180,37 @@ class BackupService {
                 safetyLevel: drift.Value(sessionData.safetyLevel),
                 createdAt: drift.Value(sessionData.createdAt),
                 updatedAt: drift.Value(sessionData.updatedAt),
+                keepaliveInterval: drift.Value(sessionData.keepaliveInterval),
+                terminalType: drift.Value(sessionData.terminalType),
+                backspaceMode: drift.Value(sessionData.backspaceMode),
               );
 
-              await db.into(db.sessions).insert(companion);
+              final newSessionId = await db.into(db.sessions).insert(companion);
+
+              // Restore Commands if any
+              if (sessionMap.containsKey('commands') &&
+                  sessionMap['commands'] != null) {
+                final commandsList = sessionMap['commands'] as List;
+                for (final c in commandsList) {
+                  // We can't reuse ID, so we create new
+                  final cmdMap = c as Map<String, dynamic>;
+                  // Handle potential missing fields if corrupted, but assume valid
+                  final label = cmdMap['label'] as String;
+                  final command = cmdMap['command'] as String;
+                  final sortOrder = cmdMap['sortOrder'] as int? ?? 0;
+
+                  await db
+                      .into(db.sessionCommands)
+                      .insert(
+                        SessionCommandsCompanion.insert(
+                          sessionId: newSessionId,
+                          label: label,
+                          command: command,
+                          sortOrder: drift.Value(sortOrder),
+                        ),
+                      );
+                }
+              }
             }
           }
           // Refresh session list

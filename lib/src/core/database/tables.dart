@@ -26,6 +26,10 @@ class Sessions extends Table {
       text().nullable()(); // JSON list of strings/regex
   IntColumn get keepaliveInterval =>
       integer().withDefault(const Constant(60))(); // Seconds, 0 to disable
+  TextColumn get terminalType =>
+      text().withDefault(const Constant('xterm-256color'))();
+  IntColumn get backspaceMode =>
+      integer().withDefault(const Constant(0))(); // 0: DEL(127), 1: BS(8)
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -46,4 +50,20 @@ class SessionRecordings extends Table {
   TextColumn get filePath => text()(); // Path to the recording file
   IntColumn get fileSize => integer().withDefault(const Constant(0))();
   TextColumn get name => text().withLength(min: 1, max: 100).nullable()();
+}
+
+class GlobalCommands extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get label => text().withLength(min: 1, max: 20)();
+  TextColumn get command => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+}
+
+class SessionCommands extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get sessionId =>
+      integer().references(Sessions, #id, onDelete: KeyAction.cascade)();
+  TextColumn get label => text().withLength(min: 1, max: 20)();
+  TextColumn get command => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }

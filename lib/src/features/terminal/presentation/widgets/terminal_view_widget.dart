@@ -10,6 +10,7 @@ import '../../application/terminal_input_handler.dart';
 import '../../../ai_assistant/presentation/ai_analysis_overlay.dart';
 import 'dart:io';
 import 'virtual_key_toolbar.dart';
+import 'button_bar_widget.dart';
 
 import 'dart:async';
 
@@ -17,12 +18,16 @@ class TerminalViewWidget extends ConsumerStatefulWidget {
   final Terminal terminal;
   final FocusNode? focusNode;
   final int safetyLevel; // 0: None, 1: Caution, 2: Production
+  final int backspaceMode; // 0: Auto/Standard (DEL), 1: Control-H (BS)
+  final int sessionId;
 
   const TerminalViewWidget({
     super.key,
     required this.terminal,
+    required this.sessionId,
     this.focusNode,
     this.safetyLevel = 0,
+    this.backspaceMode = 0,
   });
 
   @override
@@ -37,7 +42,6 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
   bool _isAltPressed = false;
   bool _showAiOverlay = false;
 
-  Timer? _debounceTimer;
   String _inputBuffer = '';
 
   @override
@@ -77,6 +81,11 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
             _isAltPressed = false;
           });
         }
+      }
+
+      // 1.5 Backspace Compatibility (Replace DEL \x7f with BS \x08 if mode == 1)
+      if (widget.backspaceMode == 1) {
+        effectiveInput = effectiveInput.replaceAll('\x7f', '\x08');
       }
 
       // --- NEW: AI Command Preview & Input Interception ---
@@ -324,32 +333,41 @@ class _TerminalViewWidgetState extends ConsumerState<TerminalViewWidget>
                     ? Border.all(color: borderColor, width: borderWidth)
                     : null,
               ),
-              child: Column(
+              child: Stack(
                 children: [
-                  Expanded(
-                    child: TerminalView(
-                      widget.terminal,
-                      textStyle: TerminalStyle(
-                        fontSize: settings.fontSize,
-                        fontFamily: settings.fontFamily,
+                  Column(
+                    children: [
+                      Expanded(
+                        child: TerminalView(
+                          widget.terminal,
+                          textStyle: TerminalStyle(
+                            fontSize: settings.fontSize,
+                            fontFamily: settings.fontFamily,
+                          ),
+                          autofocus: true,
+                          focusNode: _internalFocusNode,
+                          backgroundOpacity:
+                              0, // Ensure background shows through
+                          theme: _getTerminalTheme(settings.colorScheme),
+                        ),
                       ),
-                      autofocus: true,
-                      focusNode: _internalFocusNode,
-                      backgroundOpacity: 0, // Ensure background shows through
-                      theme: _getTerminalTheme(settings.colorScheme),
-                    ),
+                      // Fixed Button Bar (Global Custom Buttons)
+                      ButtonBarWidget(
+                        onCommand: (cmd) => widget.terminal.onOutput?.call(cmd),
+                      ),
+                      if (Platform.isAndroid || Platform.isIOS)
+                        VirtualKeyToolbar(
+                          terminal: widget.terminal,
+                          isCtrlPressed: _isCtrlPressed,
+                          isAltPressed: _isAltPressed,
+                          onCtrlToggle: (start) =>
+                              setState(() => _isCtrlPressed = start),
+                          onAltToggle: (start) =>
+                              setState(() => _isAltPressed = start),
+                          onAiHelp: _handleAiAnalysis,
+                        ),
+                    ],
                   ),
-                  if (Platform.isAndroid || Platform.isIOS)
-                    VirtualKeyToolbar(
-                      terminal: widget.terminal,
-                      isCtrlPressed: _isCtrlPressed,
-                      isAltPressed: _isAltPressed,
-                      onCtrlToggle: (start) =>
-                          setState(() => _isCtrlPressed = start),
-                      onAltToggle: (start) =>
-                          setState(() => _isAltPressed = start),
-                      onAiHelp: _handleAiAnalysis,
-                    ),
                 ],
               ),
             ),

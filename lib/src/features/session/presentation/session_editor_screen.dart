@@ -43,6 +43,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
   final _keywordController = TextEditingController();
 
   final _keepaliveController = TextEditingController();
+  final _terminalTypeController = TextEditingController();
+  int _backspaceMode = 0; // 0: Auto/DEL, 1: Backspace(^H)
 
   @override
   void initState() {
@@ -62,6 +64,8 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
       // _enableAgentForwarding = widget.session!.enableAgentForwarding; // Removed
 
       _keepaliveController.text = widget.session!.keepaliveInterval!.toString();
+      _terminalTypeController.text = widget.session!.terminalType;
+      _backspaceMode = widget.session!.backspaceMode;
 
       if (_privateKeyPath != null && _privateKeyPath!.isNotEmpty) {
         _usePemKey = true;
@@ -103,6 +107,7 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
     _smartTunnelPortsController.dispose();
     _keywordController.dispose();
     _keepaliveController.dispose();
+    _terminalTypeController.dispose();
     super.dispose();
   }
 
@@ -123,6 +128,127 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
     setState(() {
       _keywords.removeAt(index);
     });
+  }
+
+  Future<void> _editLoginScriptStep(int? index) async {
+    final Map<String, dynamic> step = index != null
+        ? Map.from(_loginScriptSteps[index])
+        : {
+            'expect': '',
+            'send': '',
+            'isRegex': false,
+            'timeout': 10000,
+            'sleep': 0,
+          };
+
+    final expectController = TextEditingController(text: step['expect']);
+    final sendController = TextEditingController(text: step['send']);
+    final timeoutController = TextEditingController(
+      text: step['timeout'].toString(),
+    );
+    final sleepController = TextEditingController(
+      text: step['sleep'].toString(),
+    );
+    bool isRegex = step['isRegex'] ?? false;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                index == null ? 'Add Script Step' : 'Edit Script Step',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: expectController,
+                      decoration: const InputDecoration(
+                        labelText: 'Expect (Wait for)',
+                        hintText: 'e.g. password:',
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: isRegex,
+                          onChanged: (v) => setState(() => isRegex = v!),
+                        ),
+                        const Text('Regex'),
+                      ],
+                    ),
+                    TextField(
+                      controller: sendController,
+                      decoration: const InputDecoration(
+                        labelText: 'Send (Reply)',
+                        hintText: 'e.g. mypassword',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: timeoutController,
+                            decoration: const InputDecoration(
+                              labelText: 'Timeout (ms)',
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: sleepController,
+                            decoration: const InputDecoration(
+                              labelText: 'Sleep (ms)',
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, {
+                      'expect': expectController.text,
+                      'send': sendController.text,
+                      'isRegex': isRegex,
+                      'timeout': int.tryParse(timeoutController.text) ?? 10000,
+                      'sleep': int.tryParse(sleepController.text) ?? 0,
+                    });
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      if (index != null) {
+        setState(() {
+          _loginScriptSteps[index] = result;
+        });
+      } else {
+        setState(() {
+          _loginScriptSteps.add(result);
+        });
+      }
+    }
   }
 
   Future<void> _pickPrivateKey() async {
@@ -182,6 +308,12 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
         keepaliveInterval: drift.Value(
           int.tryParse(_keepaliveController.text) ?? 60,
         ),
+        terminalType: drift.Value(
+          _terminalTypeController.text.isEmpty
+              ? 'xterm-256color'
+              : _terminalTypeController.text,
+        ),
+        backspaceMode: drift.Value(_backspaceMode),
 
         notificationKeywords: drift.Value(
           _keywords.isEmpty ? null : jsonEncode(_keywords),
@@ -318,165 +450,6 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                 validator: (value) =>
                     value?.isEmpty ?? true ? 'Please enter a username' : null,
               ),
-              TextFormField(
-                controller: _smartTunnelPortsController,
-                decoration: const InputDecoration(
-                  labelText: 'Smart Tunnel Ports (comma separated)',
-                  hintText: 'e.g. 8080, 3000, 5000',
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Login Script (Expect / Send)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  Switch(
-                    value: _executeLoginScript,
-                    onChanged: (value) {
-                      setState(() {
-                        _executeLoginScript = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              if (_executeLoginScript) ...[
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  height: 200,
-                  child: _loginScriptSteps.isEmpty
-                      ? const Center(
-                          child: Text('No steps defined. Add one below.'),
-                        )
-                      : ReorderableListView.builder(
-                          padding: const EdgeInsets.all(8),
-                          itemCount: _loginScriptSteps.length,
-                          onReorder: (oldIndex, newIndex) {
-                            setState(() {
-                              if (oldIndex < newIndex) {
-                                newIndex -= 1;
-                              }
-                              final item = _loginScriptSteps.removeAt(oldIndex);
-                              _loginScriptSteps.insert(newIndex, item);
-                            });
-                          },
-                          itemBuilder: (context, index) {
-                            final step = _loginScriptSteps[index];
-                            return Card(
-                              key: ValueKey('step_\$index'),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        ReorderableDragStartListener(
-                                          index: index,
-                                          child: const Icon(Icons.drag_handle),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text(
-                                          'Step',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            size: 16,
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _loginScriptSteps.removeAt(index);
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: TextFormField(
-                                            initialValue:
-                                                step['expect'] as String?,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Expect',
-                                              isDense: true,
-                                              hintText: 'e.g. password:',
-                                            ),
-                                            onChanged: (val) {
-                                              step['expect'] = val;
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Column(
-                                          children: [
-                                            const Text(
-                                              'Regex',
-                                              style: TextStyle(fontSize: 10),
-                                            ),
-                                            Checkbox(
-                                              value: step['isRegex'] == true,
-                                              onChanged: (val) {
-                                                setState(() {
-                                                  step['isRegex'] = val;
-                                                });
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    TextFormField(
-                                      initialValue: step['send'] as String?,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Send',
-                                        isDense: true,
-                                        hintText: 'e.g. mySecretPassword',
-                                      ),
-                                      onChanged: (val) {
-                                        step['send'] = val;
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _loginScriptSteps.add({
-                        'expect': '',
-                        'send': '',
-                        'isRegex': false,
-                      });
-                    });
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Step'),
-                ),
-              ],
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-
               // Network / Gateway Section
               const Text(
                 'Network / Connectivity',
@@ -540,6 +513,44 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                     return 'Please enter a valid number';
                   }
                   return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Advanced / Compatibility Section
+              const Text(
+                'Advanced / Compatibility',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _terminalTypeController,
+                decoration: const InputDecoration(
+                  labelText: 'Terminal Type (TERM)',
+                  helperText: 'e.g. xterm-256color, vt100',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: _backspaceMode,
+                decoration: const InputDecoration(
+                  labelText: 'Backspace Key Code',
+                  helperText: 'Select what the Backspace key sends',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 0,
+                    child: Text('Auto / Standard (DEL / 127)'),
+                  ),
+                  DropdownMenuItem(value: 1, child: Text('Control-H (BS / 8)')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _backspaceMode = value;
+                    });
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -637,6 +648,70 @@ class _SessionEditorScreenState extends ConsumerState<SessionEditorScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              // Login Script Section
+              ExpansionTile(
+                title: const Text(
+                  'Login Scripts',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Automate login steps (Expect/Send)'),
+                children: [
+                  SwitchListTile(
+                    title: const Text('Enable Login Script'),
+                    value: _executeLoginScript,
+                    onChanged: (val) {
+                      setState(() {
+                        _executeLoginScript = val;
+                      });
+                    },
+                  ),
+                  if (_executeLoginScript) ...[
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _loginScriptSteps.length,
+                      itemBuilder: (context, index) {
+                        final step = _loginScriptSteps[index];
+                        return ListTile(
+                          leading: const Icon(Icons.play_circle_outline),
+                          title: Text('Expect: ${step['expect']}'),
+                          subtitle: Text('Send: ${step['send']}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () => _editLoginScriptStep(index),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _loginScriptSteps.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _editLoginScriptStep(null),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Step'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Authentication',

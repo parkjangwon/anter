@@ -11,16 +11,27 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Sessions, Groups, SessionRecordings])
+@DriftDatabase(
+  tables: [
+    Sessions,
+    Groups,
+    SessionRecordings,
+    SessionCommands,
+    GlobalCommands,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
       onUpgrade: (migrator, from, to) async {
         if (from < 2) {
           // Add login script columns
@@ -54,6 +65,17 @@ class AppDatabase extends _$AppDatabase {
         if (from < 9) {
           // Add keepaliveInterval column
           await migrator.addColumn(sessions, sessions.keepaliveInterval);
+        }
+        if (from < 10) {
+          // Add terminalType and backspaceMode columns
+          await migrator.addColumn(sessions, sessions.terminalType);
+          await migrator.addColumn(sessions, sessions.backspaceMode);
+        }
+        if (from < 11) {
+          await migrator.createTable(sessionCommands);
+        }
+        if (from < 12) {
+          await migrator.createTable(globalCommands);
         }
       },
     );

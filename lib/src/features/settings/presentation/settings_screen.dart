@@ -1,3 +1,4 @@
+import 'widgets/global_buttons_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -215,6 +216,9 @@ class _SettingsContent extends ConsumerWidget {
               99,
               (value) => notifier.setScrollBufferSize(value.toInt()),
             ),
+          const Divider(),
+          if (_matchesSearch('custom buttons') || _matchesSearch('macros'))
+            const GlobalButtonsSection(),
         ]),
       );
     }

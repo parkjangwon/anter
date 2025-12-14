@@ -218,9 +218,11 @@ class SSHService {
       final targetSessionData = hops.last;
 
       print('SSHService: All hops connected. Starting shell.');
+      print('SSHService: TERM type: ${targetSessionData.terminalType}');
 
       final shell = await session.shell(
         pty: SSHPtyConfig(
+          type: targetSessionData.terminalType,
           width: terminal.viewWidth,
           height: terminal.viewHeight,
         ),

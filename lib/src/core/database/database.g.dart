@@ -561,6 +561,30 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     requiredDuringInsert: false,
     defaultValue: const Constant(60),
   );
+  static const VerificationMeta _terminalTypeMeta = const VerificationMeta(
+    'terminalType',
+  );
+  @override
+  late final GeneratedColumn<String> terminalType = GeneratedColumn<String>(
+    'terminal_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('xterm-256color'),
+  );
+  static const VerificationMeta _backspaceModeMeta = const VerificationMeta(
+    'backspaceMode',
+  );
+  @override
+  late final GeneratedColumn<int> backspaceMode = GeneratedColumn<int>(
+    'backspace_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -605,6 +629,8 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     enableAgentForwarding,
     notificationKeywords,
     keepaliveInterval,
+    terminalType,
+    backspaceMode,
     createdAt,
     updatedAt,
   ];
@@ -758,6 +784,24 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('terminal_type')) {
+      context.handle(
+        _terminalTypeMeta,
+        terminalType.isAcceptableOrUnknown(
+          data['terminal_type']!,
+          _terminalTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backspace_mode')) {
+      context.handle(
+        _backspaceModeMeta,
+        backspaceMode.isAcceptableOrUnknown(
+          data['backspace_mode']!,
+          _backspaceModeMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -851,6 +895,14 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.int,
         data['${effectivePrefix}keepalive_interval'],
       )!,
+      terminalType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}terminal_type'],
+      )!,
+      backspaceMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backspace_mode'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -887,6 +939,8 @@ class Session extends DataClass implements Insertable<Session> {
   final bool enableAgentForwarding;
   final String? notificationKeywords;
   final int keepaliveInterval;
+  final String terminalType;
+  final int backspaceMode;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Session({
@@ -908,6 +962,8 @@ class Session extends DataClass implements Insertable<Session> {
     required this.enableAgentForwarding,
     this.notificationKeywords,
     required this.keepaliveInterval,
+    required this.terminalType,
+    required this.backspaceMode,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -950,6 +1006,8 @@ class Session extends DataClass implements Insertable<Session> {
       map['notification_keywords'] = Variable<String>(notificationKeywords);
     }
     map['keepalive_interval'] = Variable<int>(keepaliveInterval);
+    map['terminal_type'] = Variable<String>(terminalType);
+    map['backspace_mode'] = Variable<int>(backspaceMode);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -991,6 +1049,8 @@ class Session extends DataClass implements Insertable<Session> {
           ? const Value.absent()
           : Value(notificationKeywords),
       keepaliveInterval: Value(keepaliveInterval),
+      terminalType: Value(terminalType),
+      backspaceMode: Value(backspaceMode),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1024,6 +1084,8 @@ class Session extends DataClass implements Insertable<Session> {
         json['notificationKeywords'],
       ),
       keepaliveInterval: serializer.fromJson<int>(json['keepaliveInterval']),
+      terminalType: serializer.fromJson<String>(json['terminalType']),
+      backspaceMode: serializer.fromJson<int>(json['backspaceMode']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1050,6 +1112,8 @@ class Session extends DataClass implements Insertable<Session> {
       'enableAgentForwarding': serializer.toJson<bool>(enableAgentForwarding),
       'notificationKeywords': serializer.toJson<String?>(notificationKeywords),
       'keepaliveInterval': serializer.toJson<int>(keepaliveInterval),
+      'terminalType': serializer.toJson<String>(terminalType),
+      'backspaceMode': serializer.toJson<int>(backspaceMode),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1074,6 +1138,8 @@ class Session extends DataClass implements Insertable<Session> {
     bool? enableAgentForwarding,
     Value<String?> notificationKeywords = const Value.absent(),
     int? keepaliveInterval,
+    String? terminalType,
+    int? backspaceMode,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -1101,6 +1167,8 @@ class Session extends DataClass implements Insertable<Session> {
         ? notificationKeywords.value
         : this.notificationKeywords,
     keepaliveInterval: keepaliveInterval ?? this.keepaliveInterval,
+    terminalType: terminalType ?? this.terminalType,
+    backspaceMode: backspaceMode ?? this.backspaceMode,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1144,6 +1212,12 @@ class Session extends DataClass implements Insertable<Session> {
       keepaliveInterval: data.keepaliveInterval.present
           ? data.keepaliveInterval.value
           : this.keepaliveInterval,
+      terminalType: data.terminalType.present
+          ? data.terminalType.value
+          : this.terminalType,
+      backspaceMode: data.backspaceMode.present
+          ? data.backspaceMode.value
+          : this.backspaceMode,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1170,6 +1244,8 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('enableAgentForwarding: $enableAgentForwarding, ')
           ..write('notificationKeywords: $notificationKeywords, ')
           ..write('keepaliveInterval: $keepaliveInterval, ')
+          ..write('terminalType: $terminalType, ')
+          ..write('backspaceMode: $backspaceMode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1177,7 +1253,7 @@ class Session extends DataClass implements Insertable<Session> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     host,
@@ -1196,9 +1272,11 @@ class Session extends DataClass implements Insertable<Session> {
     enableAgentForwarding,
     notificationKeywords,
     keepaliveInterval,
+    terminalType,
+    backspaceMode,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1221,6 +1299,8 @@ class Session extends DataClass implements Insertable<Session> {
           other.enableAgentForwarding == this.enableAgentForwarding &&
           other.notificationKeywords == this.notificationKeywords &&
           other.keepaliveInterval == this.keepaliveInterval &&
+          other.terminalType == this.terminalType &&
+          other.backspaceMode == this.backspaceMode &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1244,6 +1324,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<bool> enableAgentForwarding;
   final Value<String?> notificationKeywords;
   final Value<int> keepaliveInterval;
+  final Value<String> terminalType;
+  final Value<int> backspaceMode;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SessionsCompanion({
@@ -1265,6 +1347,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.enableAgentForwarding = const Value.absent(),
     this.notificationKeywords = const Value.absent(),
     this.keepaliveInterval = const Value.absent(),
+    this.terminalType = const Value.absent(),
+    this.backspaceMode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1287,6 +1371,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.enableAgentForwarding = const Value.absent(),
     this.notificationKeywords = const Value.absent(),
     this.keepaliveInterval = const Value.absent(),
+    this.terminalType = const Value.absent(),
+    this.backspaceMode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -1311,6 +1397,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<bool>? enableAgentForwarding,
     Expression<String>? notificationKeywords,
     Expression<int>? keepaliveInterval,
+    Expression<String>? terminalType,
+    Expression<int>? backspaceMode,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1336,6 +1424,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (notificationKeywords != null)
         'notification_keywords': notificationKeywords,
       if (keepaliveInterval != null) 'keepalive_interval': keepaliveInterval,
+      if (terminalType != null) 'terminal_type': terminalType,
+      if (backspaceMode != null) 'backspace_mode': backspaceMode,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1360,6 +1450,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<bool>? enableAgentForwarding,
     Value<String?>? notificationKeywords,
     Value<int>? keepaliveInterval,
+    Value<String>? terminalType,
+    Value<int>? backspaceMode,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1383,6 +1475,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           enableAgentForwarding ?? this.enableAgentForwarding,
       notificationKeywords: notificationKeywords ?? this.notificationKeywords,
       keepaliveInterval: keepaliveInterval ?? this.keepaliveInterval,
+      terminalType: terminalType ?? this.terminalType,
+      backspaceMode: backspaceMode ?? this.backspaceMode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1449,6 +1543,12 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (keepaliveInterval.present) {
       map['keepalive_interval'] = Variable<int>(keepaliveInterval.value);
     }
+    if (terminalType.present) {
+      map['terminal_type'] = Variable<String>(terminalType.value);
+    }
+    if (backspaceMode.present) {
+      map['backspace_mode'] = Variable<int>(backspaceMode.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1479,6 +1579,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('enableAgentForwarding: $enableAgentForwarding, ')
           ..write('notificationKeywords: $notificationKeywords, ')
           ..write('keepaliveInterval: $keepaliveInterval, ')
+          ..write('terminalType: $terminalType, ')
+          ..write('backspaceMode: $backspaceMode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1937,6 +2039,661 @@ class SessionRecordingsCompanion extends UpdateCompanion<SessionRecording> {
   }
 }
 
+class $SessionCommandsTable extends SessionCommands
+    with TableInfo<$SessionCommandsTable, SessionCommand> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionCommandsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<int> sessionId = GeneratedColumn<int>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _commandMeta = const VerificationMeta(
+    'command',
+  );
+  @override
+  late final GeneratedColumn<String> command = GeneratedColumn<String>(
+    'command',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    label,
+    command,
+    sortOrder,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_commands';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionCommand> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('command')) {
+      context.handle(
+        _commandMeta,
+        command.isAcceptableOrUnknown(data['command']!, _commandMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_commandMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SessionCommand map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionCommand(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}session_id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      command: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionCommandsTable createAlias(String alias) {
+    return $SessionCommandsTable(attachedDatabase, alias);
+  }
+}
+
+class SessionCommand extends DataClass implements Insertable<SessionCommand> {
+  final int id;
+  final int sessionId;
+  final String label;
+  final String command;
+  final int sortOrder;
+  const SessionCommand({
+    required this.id,
+    required this.sessionId,
+    required this.label,
+    required this.command,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['session_id'] = Variable<int>(sessionId);
+    map['label'] = Variable<String>(label);
+    map['command'] = Variable<String>(command);
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  SessionCommandsCompanion toCompanion(bool nullToAbsent) {
+    return SessionCommandsCompanion(
+      id: Value(id),
+      sessionId: Value(sessionId),
+      label: Value(label),
+      command: Value(command),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory SessionCommand.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionCommand(
+      id: serializer.fromJson<int>(json['id']),
+      sessionId: serializer.fromJson<int>(json['sessionId']),
+      label: serializer.fromJson<String>(json['label']),
+      command: serializer.fromJson<String>(json['command']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sessionId': serializer.toJson<int>(sessionId),
+      'label': serializer.toJson<String>(label),
+      'command': serializer.toJson<String>(command),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  SessionCommand copyWith({
+    int? id,
+    int? sessionId,
+    String? label,
+    String? command,
+    int? sortOrder,
+  }) => SessionCommand(
+    id: id ?? this.id,
+    sessionId: sessionId ?? this.sessionId,
+    label: label ?? this.label,
+    command: command ?? this.command,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  SessionCommand copyWithCompanion(SessionCommandsCompanion data) {
+    return SessionCommand(
+      id: data.id.present ? data.id.value : this.id,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      label: data.label.present ? data.label.value : this.label,
+      command: data.command.present ? data.command.value : this.command,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionCommand(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('label: $label, ')
+          ..write('command: $command, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, sessionId, label, command, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionCommand &&
+          other.id == this.id &&
+          other.sessionId == this.sessionId &&
+          other.label == this.label &&
+          other.command == this.command &&
+          other.sortOrder == this.sortOrder);
+}
+
+class SessionCommandsCompanion extends UpdateCompanion<SessionCommand> {
+  final Value<int> id;
+  final Value<int> sessionId;
+  final Value<String> label;
+  final Value<String> command;
+  final Value<int> sortOrder;
+  const SessionCommandsCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.label = const Value.absent(),
+    this.command = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  SessionCommandsCompanion.insert({
+    this.id = const Value.absent(),
+    required int sessionId,
+    required String label,
+    required String command,
+    this.sortOrder = const Value.absent(),
+  }) : sessionId = Value(sessionId),
+       label = Value(label),
+       command = Value(command);
+  static Insertable<SessionCommand> custom({
+    Expression<int>? id,
+    Expression<int>? sessionId,
+    Expression<String>? label,
+    Expression<String>? command,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (label != null) 'label': label,
+      if (command != null) 'command': command,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  SessionCommandsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? sessionId,
+    Value<String>? label,
+    Value<String>? command,
+    Value<int>? sortOrder,
+  }) {
+    return SessionCommandsCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      label: label ?? this.label,
+      command: command ?? this.command,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<int>(sessionId.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (command.present) {
+      map['command'] = Variable<String>(command.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionCommandsCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('label: $label, ')
+          ..write('command: $command, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GlobalCommandsTable extends GlobalCommands
+    with TableInfo<$GlobalCommandsTable, GlobalCommand> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GlobalCommandsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _commandMeta = const VerificationMeta(
+    'command',
+  );
+  @override
+  late final GeneratedColumn<String> command = GeneratedColumn<String>(
+    'command',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, label, command, sortOrder];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'global_commands';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<GlobalCommand> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('command')) {
+      context.handle(
+        _commandMeta,
+        command.isAcceptableOrUnknown(data['command']!, _commandMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_commandMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  GlobalCommand map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GlobalCommand(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      command: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $GlobalCommandsTable createAlias(String alias) {
+    return $GlobalCommandsTable(attachedDatabase, alias);
+  }
+}
+
+class GlobalCommand extends DataClass implements Insertable<GlobalCommand> {
+  final int id;
+  final String label;
+  final String command;
+  final int sortOrder;
+  const GlobalCommand({
+    required this.id,
+    required this.label,
+    required this.command,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['label'] = Variable<String>(label);
+    map['command'] = Variable<String>(command);
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  GlobalCommandsCompanion toCompanion(bool nullToAbsent) {
+    return GlobalCommandsCompanion(
+      id: Value(id),
+      label: Value(label),
+      command: Value(command),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory GlobalCommand.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GlobalCommand(
+      id: serializer.fromJson<int>(json['id']),
+      label: serializer.fromJson<String>(json['label']),
+      command: serializer.fromJson<String>(json['command']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'label': serializer.toJson<String>(label),
+      'command': serializer.toJson<String>(command),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  GlobalCommand copyWith({
+    int? id,
+    String? label,
+    String? command,
+    int? sortOrder,
+  }) => GlobalCommand(
+    id: id ?? this.id,
+    label: label ?? this.label,
+    command: command ?? this.command,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  GlobalCommand copyWithCompanion(GlobalCommandsCompanion data) {
+    return GlobalCommand(
+      id: data.id.present ? data.id.value : this.id,
+      label: data.label.present ? data.label.value : this.label,
+      command: data.command.present ? data.command.value : this.command,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GlobalCommand(')
+          ..write('id: $id, ')
+          ..write('label: $label, ')
+          ..write('command: $command, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, label, command, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GlobalCommand &&
+          other.id == this.id &&
+          other.label == this.label &&
+          other.command == this.command &&
+          other.sortOrder == this.sortOrder);
+}
+
+class GlobalCommandsCompanion extends UpdateCompanion<GlobalCommand> {
+  final Value<int> id;
+  final Value<String> label;
+  final Value<String> command;
+  final Value<int> sortOrder;
+  const GlobalCommandsCompanion({
+    this.id = const Value.absent(),
+    this.label = const Value.absent(),
+    this.command = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  GlobalCommandsCompanion.insert({
+    this.id = const Value.absent(),
+    required String label,
+    required String command,
+    this.sortOrder = const Value.absent(),
+  }) : label = Value(label),
+       command = Value(command);
+  static Insertable<GlobalCommand> custom({
+    Expression<int>? id,
+    Expression<String>? label,
+    Expression<String>? command,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (label != null) 'label': label,
+      if (command != null) 'command': command,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  GlobalCommandsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? label,
+    Value<String>? command,
+    Value<int>? sortOrder,
+  }) {
+    return GlobalCommandsCompanion(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      command: command ?? this.command,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (command.present) {
+      map['command'] = Variable<String>(command.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GlobalCommandsCompanion(')
+          ..write('id: $id, ')
+          ..write('label: $label, ')
+          ..write('command: $command, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1944,6 +2701,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SessionsTable sessions = $SessionsTable(this);
   late final $SessionRecordingsTable sessionRecordings =
       $SessionRecordingsTable(this);
+  late final $SessionCommandsTable sessionCommands = $SessionCommandsTable(
+    this,
+  );
+  late final $GlobalCommandsTable globalCommands = $GlobalCommandsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1952,7 +2713,19 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     groups,
     sessions,
     sessionRecordings,
+    sessionCommands,
+    globalCommands,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('session_commands', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$GroupsTableCreateCompanionBuilder =
@@ -2261,6 +3034,8 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<bool> enableAgentForwarding,
       Value<String?> notificationKeywords,
       Value<int> keepaliveInterval,
+      Value<String> terminalType,
+      Value<int> backspaceMode,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2284,6 +3059,8 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<bool> enableAgentForwarding,
       Value<String?> notificationKeywords,
       Value<int> keepaliveInterval,
+      Value<String> terminalType,
+      Value<int> backspaceMode,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2347,6 +3124,29 @@ final class $$SessionsTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _sessionRecordingsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$SessionCommandsTable, List<SessionCommand>>
+  _sessionCommandsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.sessionCommands,
+    aliasName: $_aliasNameGenerator(
+      db.sessions.id,
+      db.sessionCommands.sessionId,
+    ),
+  );
+
+  $$SessionCommandsTableProcessedTableManager get sessionCommandsRefs {
+    final manager = $$SessionCommandsTableTableManager(
+      $_db,
+      $_db.sessionCommands,
+    ).filter((f) => f.sessionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionCommandsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -2443,6 +3243,16 @@ class $$SessionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get terminalType => $composableBuilder(
+    column: $table.terminalType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backspaceMode => $composableBuilder(
+    column: $table.backspaceMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -2515,6 +3325,31 @@ class $$SessionsTableFilterComposer
           }) => $$SessionRecordingsTableFilterComposer(
             $db: $db,
             $table: $db.sessionRecordings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sessionCommandsRefs(
+    Expression<bool> Function($$SessionCommandsTableFilterComposer f) f,
+  ) {
+    final $$SessionCommandsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sessionCommands,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionCommandsTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionCommands,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2611,6 +3446,16 @@ class $$SessionsTableOrderingComposer
 
   ColumnOrderings<int> get keepaliveInterval => $composableBuilder(
     column: $table.keepaliveInterval,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get terminalType => $composableBuilder(
+    column: $table.terminalType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backspaceMode => $composableBuilder(
+    column: $table.backspaceMode,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2746,6 +3591,16 @@ class $$SessionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get terminalType => $composableBuilder(
+    column: $table.terminalType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get backspaceMode => $composableBuilder(
+    column: $table.backspaceMode,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -2823,6 +3678,31 @@ class $$SessionsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> sessionCommandsRefs<T extends Object>(
+    Expression<T> Function($$SessionCommandsTableAnnotationComposer a) f,
+  ) {
+    final $$SessionCommandsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sessionCommands,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionCommandsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionCommands,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$SessionsTableTableManager
@@ -2842,6 +3722,7 @@ class $$SessionsTableTableManager
             bool groupId,
             bool proxyJumpId,
             bool sessionRecordingsRefs,
+            bool sessionCommandsRefs,
           })
         > {
   $$SessionsTableTableManager(_$AppDatabase db, $SessionsTable table)
@@ -2875,6 +3756,8 @@ class $$SessionsTableTableManager
                 Value<bool> enableAgentForwarding = const Value.absent(),
                 Value<String?> notificationKeywords = const Value.absent(),
                 Value<int> keepaliveInterval = const Value.absent(),
+                Value<String> terminalType = const Value.absent(),
+                Value<int> backspaceMode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion(
@@ -2896,6 +3779,8 @@ class $$SessionsTableTableManager
                 enableAgentForwarding: enableAgentForwarding,
                 notificationKeywords: notificationKeywords,
                 keepaliveInterval: keepaliveInterval,
+                terminalType: terminalType,
+                backspaceMode: backspaceMode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2919,6 +3804,8 @@ class $$SessionsTableTableManager
                 Value<bool> enableAgentForwarding = const Value.absent(),
                 Value<String?> notificationKeywords = const Value.absent(),
                 Value<int> keepaliveInterval = const Value.absent(),
+                Value<String> terminalType = const Value.absent(),
+                Value<int> backspaceMode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SessionsCompanion.insert(
@@ -2940,6 +3827,8 @@ class $$SessionsTableTableManager
                 enableAgentForwarding: enableAgentForwarding,
                 notificationKeywords: notificationKeywords,
                 keepaliveInterval: keepaliveInterval,
+                terminalType: terminalType,
+                backspaceMode: backspaceMode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2956,11 +3845,13 @@ class $$SessionsTableTableManager
                 groupId = false,
                 proxyJumpId = false,
                 sessionRecordingsRefs = false,
+                sessionCommandsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (sessionRecordingsRefs) db.sessionRecordings,
+                    if (sessionCommandsRefs) db.sessionCommands,
                   ],
                   addJoins:
                       <
@@ -3030,6 +3921,27 @@ class $$SessionsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (sessionCommandsRefs)
+                        await $_getPrefetchedData<
+                          Session,
+                          $SessionsTable,
+                          SessionCommand
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionsTableReferences
+                              ._sessionCommandsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionCommandsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.sessionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -3054,6 +3966,7 @@ typedef $$SessionsTableProcessedTableManager =
         bool groupId,
         bool proxyJumpId,
         bool sessionRecordingsRefs,
+        bool sessionCommandsRefs,
       })
     >;
 typedef $$SessionRecordingsTableCreateCompanionBuilder =
@@ -3423,6 +4336,505 @@ typedef $$SessionRecordingsTableProcessedTableManager =
       SessionRecording,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$SessionCommandsTableCreateCompanionBuilder =
+    SessionCommandsCompanion Function({
+      Value<int> id,
+      required int sessionId,
+      required String label,
+      required String command,
+      Value<int> sortOrder,
+    });
+typedef $$SessionCommandsTableUpdateCompanionBuilder =
+    SessionCommandsCompanion Function({
+      Value<int> id,
+      Value<int> sessionId,
+      Value<String> label,
+      Value<String> command,
+      Value<int> sortOrder,
+    });
+
+final class $$SessionCommandsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $SessionCommandsTable, SessionCommand> {
+  $$SessionCommandsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionsTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessions.createAlias(
+        $_aliasNameGenerator(db.sessionCommands.sessionId, db.sessions.id),
+      );
+
+  $$SessionsTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<int>('session_id')!;
+
+    final manager = $$SessionsTableTableManager(
+      $_db,
+      $_db.sessions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionCommandsTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionCommandsTable> {
+  $$SessionCommandsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionsTableFilterComposer get sessionId {
+    final $$SessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionCommandsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionCommandsTable> {
+  $$SessionCommandsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionsTableOrderingComposer get sessionId {
+    final $$SessionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionCommandsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionCommandsTable> {
+  $$SessionCommandsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  $$SessionsTableAnnotationComposer get sessionId {
+    final $$SessionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionCommandsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionCommandsTable,
+          SessionCommand,
+          $$SessionCommandsTableFilterComposer,
+          $$SessionCommandsTableOrderingComposer,
+          $$SessionCommandsTableAnnotationComposer,
+          $$SessionCommandsTableCreateCompanionBuilder,
+          $$SessionCommandsTableUpdateCompanionBuilder,
+          (SessionCommand, $$SessionCommandsTableReferences),
+          SessionCommand,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SessionCommandsTableTableManager(
+    _$AppDatabase db,
+    $SessionCommandsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionCommandsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionCommandsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SessionCommandsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> sessionId = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> command = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+              }) => SessionCommandsCompanion(
+                id: id,
+                sessionId: sessionId,
+                label: label,
+                command: command,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int sessionId,
+                required String label,
+                required String command,
+                Value<int> sortOrder = const Value.absent(),
+              }) => SessionCommandsCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                label: label,
+                command: command,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SessionCommandsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.sessionId,
+                                referencedTable:
+                                    $$SessionCommandsTableReferences
+                                        ._sessionIdTable(db),
+                                referencedColumn:
+                                    $$SessionCommandsTableReferences
+                                        ._sessionIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionCommandsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionCommandsTable,
+      SessionCommand,
+      $$SessionCommandsTableFilterComposer,
+      $$SessionCommandsTableOrderingComposer,
+      $$SessionCommandsTableAnnotationComposer,
+      $$SessionCommandsTableCreateCompanionBuilder,
+      $$SessionCommandsTableUpdateCompanionBuilder,
+      (SessionCommand, $$SessionCommandsTableReferences),
+      SessionCommand,
+      PrefetchHooks Function({bool sessionId})
+    >;
+typedef $$GlobalCommandsTableCreateCompanionBuilder =
+    GlobalCommandsCompanion Function({
+      Value<int> id,
+      required String label,
+      required String command,
+      Value<int> sortOrder,
+    });
+typedef $$GlobalCommandsTableUpdateCompanionBuilder =
+    GlobalCommandsCompanion Function({
+      Value<int> id,
+      Value<String> label,
+      Value<String> command,
+      Value<int> sortOrder,
+    });
+
+class $$GlobalCommandsTableFilterComposer
+    extends Composer<_$AppDatabase, $GlobalCommandsTable> {
+  $$GlobalCommandsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$GlobalCommandsTableOrderingComposer
+    extends Composer<_$AppDatabase, $GlobalCommandsTable> {
+  $$GlobalCommandsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$GlobalCommandsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GlobalCommandsTable> {
+  $$GlobalCommandsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+}
+
+class $$GlobalCommandsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $GlobalCommandsTable,
+          GlobalCommand,
+          $$GlobalCommandsTableFilterComposer,
+          $$GlobalCommandsTableOrderingComposer,
+          $$GlobalCommandsTableAnnotationComposer,
+          $$GlobalCommandsTableCreateCompanionBuilder,
+          $$GlobalCommandsTableUpdateCompanionBuilder,
+          (
+            GlobalCommand,
+            BaseReferences<_$AppDatabase, $GlobalCommandsTable, GlobalCommand>,
+          ),
+          GlobalCommand,
+          PrefetchHooks Function()
+        > {
+  $$GlobalCommandsTableTableManager(
+    _$AppDatabase db,
+    $GlobalCommandsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GlobalCommandsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GlobalCommandsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GlobalCommandsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> command = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+              }) => GlobalCommandsCompanion(
+                id: id,
+                label: label,
+                command: command,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String label,
+                required String command,
+                Value<int> sortOrder = const Value.absent(),
+              }) => GlobalCommandsCompanion.insert(
+                id: id,
+                label: label,
+                command: command,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$GlobalCommandsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $GlobalCommandsTable,
+      GlobalCommand,
+      $$GlobalCommandsTableFilterComposer,
+      $$GlobalCommandsTableOrderingComposer,
+      $$GlobalCommandsTableAnnotationComposer,
+      $$GlobalCommandsTableCreateCompanionBuilder,
+      $$GlobalCommandsTableUpdateCompanionBuilder,
+      (
+        GlobalCommand,
+        BaseReferences<_$AppDatabase, $GlobalCommandsTable, GlobalCommand>,
+      ),
+      GlobalCommand,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3433,6 +4845,10 @@ class $AppDatabaseManager {
       $$SessionsTableTableManager(_db, _db.sessions);
   $$SessionRecordingsTableTableManager get sessionRecordings =>
       $$SessionRecordingsTableTableManager(_db, _db.sessionRecordings);
+  $$SessionCommandsTableTableManager get sessionCommands =>
+      $$SessionCommandsTableTableManager(_db, _db.sessionCommands);
+  $$GlobalCommandsTableTableManager get globalCommands =>
+      $$GlobalCommandsTableTableManager(_db, _db.globalCommands);
 }
 
 // **************************************************************************
