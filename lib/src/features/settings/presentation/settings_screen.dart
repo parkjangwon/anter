@@ -7,6 +7,8 @@ import '../domain/settings_state.dart';
 import '../domain/shortcut_intents.dart';
 import '../application/backup_service.dart';
 import 'widgets/shortcut_settings_section.dart';
+import '../../security/application/app_lock_notifier.dart';
+import '../../security/presentation/pin_setup_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -350,6 +352,61 @@ class _SettingsContent extends ConsumerWidget {
         _matchesSearch('binding') ||
         _matchesSearch('key')) {
       sections.add(const ShortcutSettingsSection());
+    }
+
+    // Security Section
+    if (_matchesSearch('security') ||
+        _matchesSearch('lock') ||
+        _matchesSearch('pin') ||
+        _matchesSearch('biometric')) {
+      final lockState = ref.watch(appLockProvider);
+      final lockNotifier = ref.read(appLockProvider.notifier);
+
+      sections.add(
+        _buildSection(context, 'Security', Icons.security, [
+          _buildSwitchSetting(
+            'App Lock',
+            'Require PIN to access the app',
+            lockState.isEnabled,
+            (value) {
+              if (value && !lockState.hasPin) {
+                // Must set PIN first
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PinSetupScreen()),
+                );
+              } else {
+                lockNotifier.setAppLockEnabled(value);
+              }
+            },
+          ),
+          if (lockState.isEnabled) ...[
+            const Divider(),
+            SwitchListTile(
+              title: const Text(
+                'Use Biometrics',
+                style: TextStyle(fontSize: 14),
+              ),
+              subtitle: const Text(
+                'Unlock with Fingerprint or Face ID',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: lockState.isBiometricEnabled,
+              onChanged: (val) => lockNotifier.setBiometricEnabled(val),
+            ),
+            ListTile(
+              title: const Text('Change PIN', style: TextStyle(fontSize: 14)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PinSetupScreen(isChangeMode: true),
+                  ),
+                );
+              },
+            ),
+          ],
+        ]),
+      );
     }
 
     // Backup & Restore Section

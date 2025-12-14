@@ -16,6 +16,8 @@ import 'package:window_manager/window_manager.dart';
 import 'dart:io';
 
 import 'src/core/services/notification_service.dart';
+import 'src/features/security/presentation/app_lock_wrapper.dart';
+import 'src/features/security/application/app_lock_notifier.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,12 +58,14 @@ class AnterApp extends ConsumerStatefulWidget {
   ConsumerState<AnterApp> createState() => _AnterAppState();
 }
 
-class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
+class _AnterAppState extends ConsumerState<AnterApp>
+    with WindowListener, WidgetsBindingObserver {
   DateTime? _lastBackPressed;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.addListener(this);
       _initWindow();
@@ -79,6 +83,7 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
     }
@@ -172,7 +177,7 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
           home: PopScope(
             canPop: !Platform.isAndroid,
             onPopInvoked: _onPopInvoked,
-            child: const SessionListScreen(),
+            child: const AppLockWrapper(child: SessionListScreen()),
           ),
         ),
       ),
@@ -241,6 +246,15 @@ class _AnterAppState extends ConsumerState<AnterApp> with WindowListener {
       }
     } else {
       await windowManager.destroy();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App is going to background or inactive -> Lock it
+      // Using read here is safe as this is called via WidgetsBinding interaction
+      ref.read(appLockProvider.notifier).lock();
     }
   }
 }
