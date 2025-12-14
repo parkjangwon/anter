@@ -73,4 +73,47 @@ Output Format (Markdown):
       return "⚠️ **Error**: AI Analysis failed.\nError: $e";
     }
   }
+
+  /// Generates a shell command from a natural language query.
+  Future<String> generateCommand(String query) async {
+    if (apiKey.isEmpty) {
+      return "echo 'Error: Gemini API Key is not set'";
+    }
+
+    try {
+      final generativModel = GenerativeModel(
+        model: model.modelId,
+        apiKey: apiKey,
+      );
+
+      // System locale for context, though command should be standard Linux
+      // final String systemLocale = Platform.localeName;
+
+      final prompt =
+          '''
+Role: You are a Linux Command Generator.
+Task: Convert the following natural language request into a specific Linux command.
+
+Request: "$query"
+
+Rules:
+1. Return **ONLY** the command. No markdown, no explanations, no quotes.
+2. If the request is dangerous (e.g., delete root), ensure it's a valid command but the user will see it before execution (Client handles preview).
+3. If multiple steps are needed, combine them with `&&` or `;`.
+4. Prefer modern, standard tools (ip, ss, systemctl) over legacy ones (ifconfig, netstat) unless specified.
+5. If the request is unclear, default to `echo "Error: Unclear request"`.
+
+Example:
+Input: "kill port 8080"
+Output: kill -9 \$(lsof -t -i:8080)
+''';
+
+      final content = [Content.text(prompt)];
+      final response = await generativModel.generateContent(content);
+
+      return response.text?.trim() ?? "echo 'Error: No response'";
+    } catch (e) {
+      return "echo 'Error: AI generation failed'";
+    }
+  }
 }
